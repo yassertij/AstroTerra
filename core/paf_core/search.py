@@ -14,12 +14,29 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Callable
 
 import numpy as np
 from pydantic import BaseModel, Field
 
 from . import DISCLAIMER, __version__
-from .errors import MetricError, PafError, RasterValidationError
+from .errors import JobCancelled, MetricError, PafError, RasterValidationError
+
+ProgressFn = Callable[[float, str], None]
+CancelFn = Callable[[], bool]
+
+
+def _noop_progress(fraction: float, message: str) -> None:
+    pass
+
+
+def _never() -> bool:
+    return False
+
+
+def _check(should_cancel: CancelFn) -> None:
+    if should_cancel():
+        raise JobCancelled("Cancelled by request.")
 from .metrics import TerrainMetrics, terrain_metrics
 from .provenance import DatasetRecord
 from .raster import Raster
@@ -82,13 +99,16 @@ def _candidate(tile: str, sub: Raster, r0: int, c0: int, native_m: float, window
 
 
 def scan_srtm_tiles(tile_names: list[str], raw_dir: Path, work_dir: Path, spacing_m: float,
-                    patch_m: float, stride_m: float, windows_m=DEFAULT_WINDOWS_M) -> tuple[_Scan, CoverageReport]:
+                    patch_m: float, stride_m: float, windows_m=DEFAULT_WINDOWS_M,
+                    progress: ProgressFn = _noop_progress, should_cancel: CancelFn = _never) -> tuple[_Scan, CoverageReport]:
     cov = CoverageReport(
         selection_method="Tiles listed explicitly by the user; no automatic or global selection.",
         tiles_requested=list(tile_names),
     )
     scan = _Scan()
-    for name in tile_names:
+    for k, name in enumerate(tile_names):
+        _check(should_cancel)
+        progress(k / max(1, len(tile_names)), f"Tile {k + 1}/{len(tile_names)}: {name}")
         try:
             tid = srtm_gl1.TileId.parse(name)
         except RasterValidationError as exc:
@@ -121,6 +141,7 @@ def scan_srtm_tiles(tile_names: list[str], raw_dir: Path, work_dir: Path, spacin
         cov.tiles_examined.append(tid.name)
         scan.records[tid.name] = agg.record
         for r0, c0, ky, kx in _patches(agg, patch_m, stride_m):
+            _check(should_cancel)
             scan.candidates.append(_candidate(tid.name, agg.subset(r0, r0 + ky, c0, c0 + kx), r0, c0, native, windows_m))
             if noff is not None:
                 scan.fill_excluded.append(_candidate(tid.name, noff.subset(r0, r0 + ky, c0, c0 + kx), r0, c0, native, windows_m, 0.0))
@@ -143,12 +164,19 @@ class AnalysisResult(BaseModel):
 
 def analyze_mars_target(megdr_label: Path, lat: float, lon: float, srtm_tiles: list[str], srtm_raw: Path,
                         work_dir: Path, patch_km: float = 40.0, stride_km: float = 10.0,
-                        windows_m=DEFAULT_WINDOWS_M, weights: dict[str, float] | None = None) -> AnalysisResult:
+                        windows_m=DEFAULT_WINDOWS_M, weights: dict[str, float] | None = None,
+                        progress: ProgressFn = _noop_progress, should_cancel: CancelFn = _never) -> AnalysisResult:
+    progress(0.0, "Reading Mars target")
     product = mola_megdr.open_megdr(megdr_label)
     target = mola_megdr.read_window(product, *mola_megdr.window_from_center_km(product, lat, lon, patch_km))
     tm = terrain_metrics(target, windows_m)
     spacing = native_spacing_m(target)
-    scan, cov = scan_srtm_tiles(srtm_tiles, srtm_raw, work_dir, spacing, patch_km * 1000, stride_km * 1000, windows_m)
+    scan, cov = scan_srtm_tiles(
+        srtm_tiles, srtm_raw, work_dir, spacing, patch_km * 1000, stride_km * 1000, windows_m,
+        progress=lambda f, m: progress(0.05 + 0.85 * f, m), should_cancel=should_cancel,
+    )
+    _check(should_cancel)
+    progress(0.9, "Ranking candidates")
     target_features = features_from_metrics(tm)
     ranking = rank_candidates(target_features, scan.candidates, weights)
 
@@ -167,6 +195,7 @@ def analyze_mars_target(megdr_label: Path, lat: float, lon: float, srtm_tiles: l
         except MetricError as exc:
             fill_note = f"fill-excluded run failed: {exc}"
     ranking.flags.append(fill_note)
+    progress(1.0, "Done")
 
     return AnalysisResult(
         target={"body": "MARS", "center_lat": lat, "center_lon_east": lon, "patch_km": patch_km,

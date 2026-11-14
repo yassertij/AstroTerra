@@ -21,5 +21,9 @@ class RasterValidationError(PafError):
         super().__init__("Raster validation failed:\n- " + "\n- ".join(self.problems))
 
 
+class JobCancelled(PafError):
+    """The caller asked to stop a long computation; no partial result is returned."""
+
+
 class MetricError(PafError):
     """A metric cannot be computed reliably; no substitute value is returned."""
