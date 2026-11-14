@@ -76,6 +76,19 @@ class Raster:
         if self.fill_fraction is not None and self.fill_fraction.shape != self.data.shape:
             raise ValueError("fill_fraction shape must match data")
 
+    def subset(self, r0: int, r1: int, c0: int, c1: int) -> "Raster":
+        """Pixel-index sub-window (no copy of provenance history beyond a 'subset' step)."""
+        g = self.grid
+        sub = GeoGrid(
+            body=g.body, radius_m=g.radius_m, lat_top=g.lat_top - r0 * g.deg_per_pixel,
+            lon_west=g.lon_west + c0 * g.lon_step, deg_per_pixel=g.deg_per_pixel,
+            rows=r1 - r0, cols=c1 - c0, ellipsoid=g.ellipsoid, lon_deg_per_pixel=g.lon_deg_per_pixel,
+        )
+        rec = self.record.model_copy(deep=True)
+        rec.add_step("subset", rows=[r0, r1], cols=[c0, c1])
+        ff = None if self.fill_fraction is None else self.fill_fraction[r0:r1, c0:c1]
+        return Raster(data=self.data[r0:r1, c0:c1], grid=sub, record=rec, fill_fraction=ff)
+
     @property
     def valid_mask(self) -> np.ndarray:
         return np.isfinite(self.data)
