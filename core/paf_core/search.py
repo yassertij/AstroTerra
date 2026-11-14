@@ -91,10 +91,15 @@ def _candidate(tile: str, sub: Raster, r0: int, c0: int, native_m: float, window
     except MetricError as exc:
         flags.append(f"metrics_unavailable: {exc}")
     i = g.rows // 2
+    v = sub.data[np.isfinite(sub.data)]
+    elevation = None if v.size == 0 else {
+        "mean": float(v.mean()), "std": float(v.std()), "min": float(v.min()), "max": float(v.max()),
+    }
     return Candidate(
         candidate_id=f"{tile}_r{r0}_c{c0}", tile=tile, region=region, features=feats,
         valid_fraction=sub.valid_fraction, fill_fraction=fill, native_spacing_m=native_m,
         analysis_spacing_m=float(np.sqrt(g.dy_m()[i] * g.dx_m()[i])), flags=flags + list(sub.record.quality_flags),
+        elevation_m=elevation,
     )
 
 

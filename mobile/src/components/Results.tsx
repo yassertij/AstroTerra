@@ -37,6 +37,7 @@ function Detail({ r, res, photo }: { r: CandidateResult; res: AnalysisResult; ph
       <p><strong>Distance {r.distance?.toFixed(2)}</strong> (lower = more similar; 0 = identical; not a probability).</p>
       <p>{explain(r.contributions, r.feature_differences)}</p>
       <Contributions c={r} />
+      <div className="table-wrap">
       <table>
         <caption className="sr-only">Feature values</caption>
         <thead><tr><th>Feature</th><th>Mars target</th><th>This candidate</th><th>Difference</th></tr></thead>
@@ -55,6 +56,7 @@ function Detail({ r, res, photo }: { r: CandidateResult; res: AnalysisResult; ph
           })}
         </tbody>
       </table>
+      </div>
       <h4>Quality</h4>
       <ul>
         <li>Valid data: {pct(r.valid_fraction)}; void-fill (non-SRTM) share: {pct(r.fill_fraction)}</li>
@@ -142,7 +144,7 @@ export function Results({ jobs, photo }: { jobs: ReturnType<typeof useJob>; phot
       </div>
 
       <h3>Ranking ({ranked.length} candidates)</h3>
-      <div style={{ overflowX: "auto" }}>
+      <div className="table-wrap">
         <table>
           <caption className="sr-only">Earth candidates ranked by distance to the Mars target</caption>
           <thead><tr><th>Rank</th><th>Candidate</th><th>Distance</th><th>Rank range</th><th>Void fill</th><th></th></tr></thead>

@@ -55,7 +55,11 @@ export function Analyse({ jobs, extraTiles, onShowResults }: { jobs: Jobs; extra
 
   return (
     <section aria-labelledby="an-h">
-      <h2 id="an-h">Analyse</h2>
+      <div className="page-head">
+        <p className="eyebrow">Analysis · background job</p>
+        <h2 id="an-h">Set up an analysis</h2>
+        <p className="lead">Pick a Mars target and the Earth tiles to examine. The server ranks every Earth patch by terrain-shape distance.</p>
+      </div>
       {jobs.jobId && <JobStatus jobs={jobs} onShowResults={onShowResults} />}
       {loadErr && <ErrorBox error={loadErr} onRetry={load} />}
 
@@ -128,7 +132,8 @@ export function Analyse({ jobs, extraTiles, onShowResults }: { jobs: Jobs; extra
         </div>
 
         {submitErr && <ErrorBox error={submitErr} />}
-        <button className="primary" type="submit" disabled={busy || !!running || tiles.length === 0}>
+        <button className="btn btn-aurora btn-lg" type="submit" disabled={busy || !!running || tiles.length === 0} aria-busy={busy || undefined}>
+          {busy && <span className="spinner" aria-hidden="true" />}
           {running ? "Analysis running…" : "Run analysis"}
         </button>
       </form>

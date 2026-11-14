@@ -43,7 +43,11 @@ later formats (e.g. GeoTIFF exports, PDS4).
 
 ## Mobile — `mobile/`
 
-- Six tabs: Overview, Analyse, Results, Photo, Sources, Settings.
+- Hash-routed pages (`#/overview`, `#/earth`, `#/moon`, `#/mars`, `#/compare`, `#/analysis`,
+  `#/method`, `#/settings`) in a Purple Aurora glass design (`theme.css`, `components/ui/`).
+  Earth page: Leaflet map on NASA GIBS Blue Marble tiles (loaded on demand) with SRTM coverage,
+  server tiles and candidate patches; the photo panel lives there. Moon page states that lunar
+  data is not integrated. Compare page: metric-by-metric charts from the analysis result only.
 - `lib/api.ts` (client, timeouts, structured errors), `lib/useJob.ts` (polling, resume, backoff),
   `lib/photo.ts` (EXIF via exifr, Capacitor Geolocation), `lib/coverage.ts` (on-device SRTM check),
   `lib/palette.ts` + `lib/contrast.ts` (palette and WCAG checks).

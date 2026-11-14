@@ -63,6 +63,8 @@ class Candidate(BaseModel):
     native_spacing_m: float
     analysis_spacing_m: float
     flags: list[str] = Field(default_factory=list)
+    # Descriptive only, never used in the distance: heights use each body's own datum.
+    elevation_m: dict[str, float] | None = None
 
 
 class CandidateResult(BaseModel):
@@ -82,6 +84,7 @@ class CandidateResult(BaseModel):
     exclusion_reasons: list[str] = Field(default_factory=list)
     sensitivity: dict = Field(default_factory=dict)
     flags: list[str] = Field(default_factory=list)
+    elevation_m: dict[str, float] | None = None
 
 
 class Ranking(BaseModel):
@@ -145,6 +148,7 @@ def rank_candidates(target: dict[str, float], candidates: list[Candidate],
             valid_fraction=c.valid_fraction, fill_fraction=c.fill_fraction,
             native_spacing_m=c.native_spacing_m, analysis_spacing_m=c.analysis_spacing_m,
             excluded=bool(reasons), exclusion_reasons=reasons, flags=list(c.flags),
+            elevation_m=c.elevation_m,
         )
         results[c.candidate_id] = res
         if not reasons:

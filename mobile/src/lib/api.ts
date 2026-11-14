@@ -101,8 +101,11 @@ export type DatasetRecord = {
   archive: string; body: string; projection: string; horizontal_reference: string; vertical_reference: string;
   units: string; fill_value: string; citation: string; quality_flags: string[]; processing_history: Step[];
 };
+export type Region = { tile: string; lat_min: number; lat_max: number; lon_min: number; lon_max: number };
+export type Elevation = { mean: number; std: number; min: number; max: number };
 export type CandidateResult = {
   candidate_id: string; tile: string; rank: number | null; distance: number | null;
+  region?: Region; elevation_m?: Elevation | null;
   feature_differences: Record<string, number>; normalized_differences: Record<string, number>;
   contributions: Record<string, number>; valid_fraction: number; fill_fraction: number | null;
   native_spacing_m: number; analysis_spacing_m: number; excluded: boolean; exclusion_reasons: string[];
@@ -110,8 +113,9 @@ export type CandidateResult = {
 };
 export type AnalysisResult = {
   disclaimer: string; is_synthetic: boolean; software_version: string;
-  target: { body: string; patch_km: number };
-  target_metrics: { slope: { median: number }; flags: string[] };
+  target: { body: string; patch_km: number; center_lat?: number; center_lon_east?: number;
+    bounds?: { lat_min: number; lat_max: number; lon_min: number; lon_max: number } };
+  target_metrics: { slope: { median: number; p90?: number }; flags: string[]; elevation_mean_m?: number; elevation_std_m?: number; valid_fraction?: number };
   target_record: DatasetRecord; earth_records: Record<string, DatasetRecord>;
   settings: Record<string, unknown>;
   coverage: { selection_method: string; tiles_requested: string[]; tiles_examined: string[]; tiles_failed: Record<string, string>; tiles_unavailable: Record<string, string>; tiles_outside_coverage: string[]; note: string };

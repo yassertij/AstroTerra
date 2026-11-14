@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { AA, contrastRatio } from "../lib/contrast";
-import { AVOIDED_PAIRS, PALETTE, USED_PAIRS } from "../lib/palette";
+import { AVOIDED_PAIRS, PALETTE, USED_PAIRS, auroraAt } from "../lib/palette";
 import { checkCoverage, roundCoord, srtmTileName } from "../lib/coverage";
 import { explain } from "../lib/labels";
 import { jpegWithGps, jpegWithoutExif, malformedJpeg } from "./jpeg";
@@ -23,6 +23,12 @@ describe("palette contrast (WCAG AA)", () => {
   });
   it("documents the pairs avoided because they fail", () => {
     for (const p of AVOIDED_PAIRS) expect(contrastRatio(p.fg, p.bg)).toBeLessThan(AA[p.kind]);
+  });
+  it("Aurora button label keeps 4.5:1 where text sits (15 %–85 % of the width)", () => {
+    for (let p = 0.15; p <= 0.85001; p += 0.05) {
+      const bg = auroraAt(p);
+      expect(contrastRatio(PALETTE.text, bg), `at ${p.toFixed(2)} on ${bg}`).toBeGreaterThanOrEqual(4.5);
+    }
   });
   it("matches known reference values", () => {
     expect(contrastRatio("#000000", "#FFFFFF")).toBeCloseTo(21, 5);

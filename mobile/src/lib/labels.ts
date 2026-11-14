@@ -17,6 +17,16 @@ export function unit(f: string): string {
   return FEATURE_LABELS[f]?.unit ?? "";
 }
 
+/** A candidate's own value for feature f, recovered from target value minus (target - candidate). */
+export function candidateValue(
+  res: { ranking: { target_features: Record<string, number> } },
+  c: { feature_differences: Record<string, number> }, f: string,
+): number | null {
+  const t = res.ranking.target_features[f];
+  const d = c.feature_differences[f];
+  return t == null || d == null ? null : t - d;
+}
+
 export function pct(x: number | null | undefined, digits = 1): string {
   return x == null ? "unknown" : `${(x * 100).toFixed(digits)} %`;
 }

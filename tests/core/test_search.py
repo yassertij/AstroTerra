@@ -46,6 +46,8 @@ def test_ranking_complete_and_sorted(result):
         assert set(r.contributions) == set(result.ranking.features_used)
         assert "fill_excluded_rank" in r.sensitivity
         assert r.native_spacing_m < 40 and 400 < r.analysis_spacing_m < 520
+        e = r.elevation_m
+        assert e and e["min"] <= e["mean"] <= e["max"] and e["std"] >= 0
 
 
 def test_fill_heavy_patch_is_excluded(result):
