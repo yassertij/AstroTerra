@@ -17,8 +17,6 @@ dist/
 # Node / mobile
 node_modules/
 mobile/dist/
-mobile/android/
-mobile/ios/
 
 # Secrets and local config
 .env

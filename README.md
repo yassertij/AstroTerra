@@ -116,17 +116,41 @@ Environment variables (all optional): `PAF_DATA_DIR` (default `./data`), `PAF_DB
 (default `data/processed/paf_jobs.sqlite3`), `PAF_CORS_ORIGINS` (comma-separated).
 A data directory containing a file named `SYNTHETIC` marks every result as synthetic demo data.
 
-### Native apps (not yet verified)
+### Android APK (built, not yet run on a device)
+
+Requirements: Android Studio's SDK (platform 36) and **JDK 21** (Capacitor 8 / Gradle 8.14
+do not run on Android Studio's bundled Java 25).
 
 ```bash
 npm --prefix mobile run build
-cd mobile && npx cap add android && npx cap sync
 ```
 
-iOS needs macOS with Xcode (`npx cap add ios`). Android needs Android Studio. In the
-emulator the API is at `http://10.0.2.2:8765` (set it in the app's Settings). Declare
-photo-library and location usage strings in the native projects. **No native build or
-simulator test has been run yet.**
+```bash
+cd mobile && npx cap sync android
+```
+
+```bash
+cd mobile/android && set JAVA_HOME=C:\Users\<you>\.jdks\jdk-21.0.13.0.2+1 && gradlew.bat assembleDebug
+```
+
+Output: `mobile/android/app/build/outputs/apk/debug/app-debug.apk` (debug-signed; install
+on your own phone, not for the Play Store). Permissions: coarse location, read images,
+media location (needed for EXIF GPS on Android 10+); no camera permission (the system
+camera app is used).
+
+To use it on a phone, the API must be reachable on your network:
+
+```bash
+.venv/Scripts/python -m uvicorn paf_api.main:create_app --factory --host 0.0.0.0 --port 8765
+```
+
+then enter `http://<your-PC-LAN-IP>:8765` in the app's Settings (emulator: `http://10.0.2.2:8765`).
+Allow port 8765 in your firewall yourself. The API has no authentication: anyone on the
+same network can use it while it runs. The app is served as `http://localhost` with
+cleartext allowed so it can call this plain-HTTP backend.
+
+iOS needs macOS with Xcode (`npx cap add ios`) plus photo-library and location usage
+strings in `Info.plist`. **No native app has been run on a device or simulator yet.**
 
 ## Workflow example
 
