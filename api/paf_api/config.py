@@ -13,6 +13,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 class Settings:
     data_dir: Path
     db_path: Path
+    cors_origins: tuple[str, ...] = (
+        "http://localhost:5173", "http://127.0.0.1:5173",  # Vite dev server
+        "capacitor://localhost", "http://localhost", "https://localhost",  # Capacitor iOS / Android webviews
+    )
 
     @property
     def megdr_dir(self) -> Path:
@@ -35,4 +39,7 @@ class Settings:
     def from_env(cls) -> "Settings":
         data = Path(os.environ.get("PAF_DATA_DIR", REPO_ROOT / "data")).resolve()
         db = Path(os.environ.get("PAF_DB_PATH", data / "processed" / "paf_jobs.sqlite3")).resolve()
+        origins = os.environ.get("PAF_CORS_ORIGINS")
+        if origins:
+            return cls(data_dir=data, db_path=db, cors_origins=tuple(o.strip() for o in origins.split(",") if o.strip()))
         return cls(data_dir=data, db_path=db)

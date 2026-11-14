@@ -8,12 +8,14 @@ from contextlib import asynccontextmanager
 from dataclasses import asdict
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Query, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from paf_core import DISCLAIMER, __version__ as core_version
+from paf_core import export
 from paf_core.errors import PafError
 from paf_core.search import analyze_mars_target
 from paf_core.sources import mola_megdr, srtm_gl1
@@ -113,6 +115,8 @@ def create_app(settings: Settings | None = None, start_worker: bool = True, runn
     app = FastAPI(title="Planetary Analog Finder API", version=core_version, lifespan=lifespan,
                   description=DISCLAIMER)
     app.state.settings, app.state.store, app.state.worker = settings, store, worker
+    app.add_middleware(CORSMiddleware, allow_origins=list(settings.cors_origins),
+                       allow_methods=["GET", "POST"], allow_headers=["Content-Type"])
 
     @app.exception_handler(ApiError)
     async def _api_error(_: Request, exc: ApiError):
@@ -197,6 +201,19 @@ def create_app(settings: Settings | None = None, start_worker: bool = True, runn
             raise ApiError(409, "result_not_ready", f"Job is {job['status']}; a result exists only for succeeded jobs.",
                            {"status": job["status"], "error": json.loads(job["error"]) if job["error"] else None})
         return JSONResponse(json.loads(job["result"]))
+
+    @app.get(f"{P}/jobs/{{jid}}/export")
+    def export_result(jid: str, format: str = Query("json", pattern="^(json|csv)$"),
+                      include_coordinates: bool = False):
+        res = result(jid)  # raises 404 / 409 as appropriate
+        data = json.loads(res.body)
+        stem = f"planetary-analog-{jid[:8]}"
+        if format == "csv":
+            body, media = export.to_csv(data, include_coordinates), "text/csv; charset=utf-8"
+        else:
+            body, media = export.to_json(data, include_coordinates), "application/json"
+        return Response(body, media_type=media,
+                        headers={"Content-Disposition": f'attachment; filename="{stem}.{format}"'})
 
     return app
 
