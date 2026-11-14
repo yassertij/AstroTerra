@@ -1,0 +1,35 @@
+# Data: originals and derived rasters never go into Git
+data/raw/*
+!data/raw/README.md
+data/processed/*
+!data/processed/README.md
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# Node / mobile
+node_modules/
+mobile/dist/
+mobile/android/
+mobile/ios/
+
+# Secrets and local config
+.env
+.env.*
+!.env.example
+.netrc
+_netrc
+*.sqlite3
+*.db
+
+# Tooling
+graphify-out/
+.DS_Store
+Thumbs.db
