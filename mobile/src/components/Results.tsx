@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { api, type AnalysisResult, type CandidateResult, type DatasetRecord } from "../lib/api";
-import { explain, label, pct, unit } from "../lib/labels";
+import { bodyName, explain, fmtVersion, label, pct, unit } from "../lib/labels";
 import { SEQUENTIAL } from "../lib/palette";
 import type { useJob } from "../lib/useJob";
 import type { PhotoState } from "./PhotoPanel";
@@ -35,12 +35,12 @@ function Detail({ r, res, photo }: { r: CandidateResult; res: AnalysisResult; ph
     <div className="card">
       <h3>#{r.rank} — {r.candidate_id}</h3>
       <p><strong>Distance {r.distance?.toFixed(2)}</strong> (lower = more similar; 0 = identical; not a probability).</p>
-      <p>{explain(r.contributions, r.feature_differences)}</p>
+      <p>{explain(r.contributions, r.feature_differences, bodyName(res.target.body))}</p>
       <Contributions c={r} />
       <div className="table-wrap">
       <table>
         <caption className="sr-only">Feature values</caption>
-        <thead><tr><th>Feature</th><th>Mars target</th><th>This candidate</th><th>Difference</th></tr></thead>
+        <thead><tr><th>Feature</th><th>{bodyName(res.target.body)} target</th><th>This candidate</th><th>Difference</th></tr></thead>
         <tbody>
           {Object.keys(r.feature_differences).map((f) => {
             const t = res.ranking.target_features[f];
@@ -80,7 +80,7 @@ function Detail({ r, res, photo }: { r: CandidateResult; res: AnalysisResult; ph
 function Provenance({ name, rec }: { name: string; rec: DatasetRecord }) {
   return (
     <details className="card">
-      <summary><strong>{name}</strong>: {rec.data_set_id} v{rec.product_version} ({rec.product_id})</summary>
+      <summary><strong>{name}</strong>: {rec.data_set_id} {fmtVersion(rec.product_version)} ({rec.product_id})</summary>
       <ul>
         <li>DOI: {rec.doi}</li>
         <li>Mission / instrument: {rec.mission} / {rec.instrument}</li>
@@ -146,7 +146,7 @@ export function Results({ jobs, photo }: { jobs: ReturnType<typeof useJob>; phot
       <h3>Ranking ({ranked.length} candidates)</h3>
       <div className="table-wrap">
         <table>
-          <caption className="sr-only">Earth candidates ranked by distance to the Mars target</caption>
+          <caption className="sr-only">Earth candidates ranked by distance to the {bodyName(res.target.body)} target</caption>
           <thead><tr><th>Rank</th><th>Candidate</th><th>Distance</th><th>Rank range</th><th>Void fill</th><th></th></tr></thead>
           <tbody>
             {ranked.map((r) => (
@@ -169,7 +169,7 @@ export function Results({ jobs, photo }: { jobs: ReturnType<typeof useJob>; phot
       )}
 
       <h3>Provenance</h3>
-      <Provenance name="Mars target" rec={res.target_record} />
+      <Provenance name={`${bodyName(res.target.body)} target`} rec={res.target_record} />
       {Object.entries(res.earth_records).map(([t, rec]) => <Provenance key={t} name={`Earth ${t}`} rec={rec} />)}
 
       <Exports jobId={jobs.jobId} />

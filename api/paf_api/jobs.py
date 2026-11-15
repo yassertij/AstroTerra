@@ -3,12 +3,13 @@
 Lifecycle: queued -> running -> succeeded | failed | cancelled.
 Cancelling a queued job cancels it at once; cancelling a running job sets a flag that
 the computation checks between steps. Jobs left 'running' by a server restart are
-marked failed on startup. Logs contain job ids and states only - never request
+marked failed on startup; jobs still 'queued' are put back on the queue. Logs contain job ids and states only - never request
 parameters (which can include coordinates).
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import queue
@@ -16,7 +17,7 @@ import sqlite3
 import threading
 import traceback
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable
 
@@ -47,6 +48,10 @@ class JobStore:
                     cancel_requested INTEGER NOT NULL DEFAULT 0,
                     created TEXT NOT NULL, updated TEXT NOT NULL)"""
             )
+            cols = {r[1] for r in self._db.execute("PRAGMA table_info(jobs)")}
+            for col in ("fingerprint", "idempotency_key"):  # migration for databases created by v0.1.0
+                if col not in cols:
+                    self._db.execute(f"ALTER TABLE jobs ADD COLUMN {col} TEXT")
             self._db.commit()
 
     def _exec(self, sql: str, args: tuple = ()) -> list[sqlite3.Row]:
@@ -55,12 +60,47 @@ class JobStore:
             self._db.commit()
             return rows
 
-    def create(self, kind: str, params: dict) -> str:
+    @staticmethod
+    def fingerprint(kind: str, params: dict) -> str:
+        return hashlib.sha256((kind + json.dumps(params, sort_keys=True)).encode()).hexdigest()
+
+    def create(self, kind: str, params: dict, idempotency_key: str | None = None) -> str:
         jid = uuid.uuid4().hex
         t = _now()
-        self._exec("INSERT INTO jobs (id, kind, status, params, created, updated) VALUES (?,?,?,?,?,?)",
-                   (jid, kind, "queued", json.dumps(params), t, t))
+        self._exec("INSERT INTO jobs (id, kind, status, params, created, updated, fingerprint, idempotency_key) "
+                   "VALUES (?,?,?,?,?,?,?,?)",
+                   (jid, kind, "queued", json.dumps(params), t, t, self.fingerprint(kind, params), idempotency_key))
         return jid
+
+    def find_active(self, fingerprint: str) -> dict | None:
+        rows = self._exec("SELECT * FROM jobs WHERE fingerprint = ? AND status IN ('queued','running') "
+                          "ORDER BY created LIMIT 1", (fingerprint,))
+        return dict(rows[0]) if rows else None
+
+    def find_by_key(self, key: str) -> dict | None:
+        rows = self._exec("SELECT * FROM jobs WHERE idempotency_key = ? ORDER BY created DESC LIMIT 1", (key,))
+        return dict(rows[0]) if rows else None
+
+    def count_active(self) -> int:
+        return self._exec("SELECT COUNT(*) FROM jobs WHERE status IN ('queued','running')")[0][0]
+
+    def queued_ids(self) -> list[str]:
+        return [r["id"] for r in self._exec("SELECT id FROM jobs WHERE status = 'queued' ORDER BY created")]
+
+    def purge_older_than(self, days: float) -> int:
+        """Delete finished jobs (and their results) last updated more than ``days`` ago."""
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+        rows = self._exec("SELECT id FROM jobs WHERE status IN ('succeeded','failed','cancelled') AND updated < ?",
+                          (cutoff,))
+        self._exec("DELETE FROM jobs WHERE status IN ('succeeded','failed','cancelled') AND updated < ?", (cutoff,))
+        return len(rows)
+
+    def ping(self) -> bool:
+        try:
+            self._exec("SELECT 1")
+            return True
+        except sqlite3.Error:
+            return False
 
     def get(self, jid: str) -> dict | None:
         rows = self._exec("SELECT * FROM jobs WHERE id = ?", (jid,))
@@ -107,6 +147,10 @@ class Worker:
 
     def start(self) -> None:
         self._thread.start()
+
+    @property
+    def alive(self) -> bool:
+        return self._thread.is_alive()
 
     def stop(self) -> None:
         self._q.put(None)

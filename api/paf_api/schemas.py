@@ -12,18 +12,21 @@ TileName = Annotated[str, Field(pattern=r"^[NS]\d{2}[EW]\d{3}$", description="SR
 
 
 class Strict(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
 
 
-class MarsTarget(Strict):
-    body: Literal["MARS"] = "MARS"
+class Target(Strict):
+    body: Literal["MARS", "MOON"] = Field(default="MARS", description="MARS: MOLA MEGDR; MOON: LOLA LDEM_64")
     lat: float = Field(ge=-88.0, le=88.0, description="Planetocentric latitude, degrees")
     lon_east: float = Field(ge=0.0, lt=360.0, description="East longitude, 0-360 degrees")
     patch_km: float = Field(default=40.0, ge=10.0, le=80.0)
 
 
+MarsTarget = Target  # backward-compatible name
+
+
 class AnalysisRequest(Strict):
-    target: MarsTarget
+    target: Target
     earth_tiles: list[TileName] = Field(min_length=1, max_length=20)
     stride_km: float = Field(default=10.0, ge=2.0, le=40.0)
     weights: dict[str, float] | None = None

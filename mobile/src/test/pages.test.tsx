@@ -30,7 +30,7 @@ describe("ComparePage", () => {
     expect(screen.getAllByText("767.3 m").length).toBeGreaterThan(0);
     expect(screen.getAllByText("3375.0 m").length).toBeGreaterThan(0);
     expect(screen.getByText(/Temperature, climate, geology/)).toBeTruthy();
-    expect(screen.getAllByText(/Unavailable — no lunar data/).length).toBe(2);
+    expect(screen.getAllByText(/no direct Moon–Mars comparison/).length).toBe(1);
     expect(screen.queryByText(/%\s*similar/i)).toBeNull();
   });
   it("asks for an analysis when there is none", () => {

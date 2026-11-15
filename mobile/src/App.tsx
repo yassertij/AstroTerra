@@ -57,7 +57,11 @@ export default function App() {
     api.health().then((h) => setSynthetic(h.synthetic_data)).catch(() => setSynthetic(null));
     api.datasets().then(setDatasets).catch((e) => setDsError(e.message));
   }, []);
-  useEffect(loadDatasets, [loadDatasets]);
+  // Refresh the server dataset list on every page change (one small request), so data added on
+  // the server after the app started (e.g. a newly downloaded LOLA product) is not missed.
+  useEffect(() => {
+    loadDatasets();
+  }, [route, loadDatasets]);
 
   const go = (r: Route) => { window.location.hash = `/${r}`; };
   const useTile = (t: string) => setExtraTiles((xs) => (xs.includes(t) ? xs : [...xs, t]));
@@ -93,10 +97,10 @@ export default function App() {
                 compareIds={compareIds} setCompareIds={setCompareIds} />
             </Suspense>
           )}
-          {route === "moon" && <MoonPage datasets={datasets} go={go} />}
+          {route === "moon" && <MoonPage datasets={datasets} go={go} jobs={jobs} photo={photo} />}
           {route === "mars" && <MarsPage jobs={jobs} photo={photo} datasets={datasets} go={go} />}
           {route === "compare" && <ComparePage result={jobs.result} selected={compareIds} setSelected={setCompareIds} go={go} />}
-          {route === "analysis" && <Analyse jobs={jobs} extraTiles={extraTiles} onShowResults={() => go("mars")} />}
+          {route === "analysis" && <Analyse jobs={jobs} extraTiles={extraTiles} onShowResults={() => go(jobs.result?.target.body === "MOON" ? "moon" : "mars")} />}
           {route === "method" && <MethodPage />}
           {route === "settings" && (
             <Settings readable={readable} setReadable={setReadable} onDeleteLocalData={() => {

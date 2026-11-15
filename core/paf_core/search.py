@@ -42,7 +42,7 @@ from .provenance import DatasetRecord
 from .raster import Raster
 from .resample import aggregate_to_spacing, native_spacing_m
 from .similarity import Candidate, Ranking, features_from_metrics, rank_candidates
-from .sources import mola_megdr, srtm_gl1
+from .sources import lola_gdr, mola_megdr, srtm_gl1
 
 DEFAULT_WINDOWS_M = (5000.0, 10000.0, 20000.0)
 
@@ -167,13 +167,50 @@ class AnalysisResult(BaseModel):
     limitations: list[str]
 
 
+# Maximum relative difference between the target's grid spacing and the achieved Earth
+# analysis spacing (integer block factors cannot hit it exactly). Beyond this the
+# candidate is not compared: window and slope metrics depend on spacing.
+MAX_SPACING_MISMATCH = 0.05
+
+_BODY = {
+    "MARS": {
+        "name": "Mars", "reader": mola_megdr, "open": mola_megdr.open_megdr,
+        "datum": "Mars topography is relative to the areoid",
+        "interp": "MOLA MEGDR cells without observations are interpolated and cannot yet be identified.",
+    },
+    "MOON": {
+        "name": "Moon", "reader": lola_gdr, "open": lola_gdr.open_lola,
+        "datum": "Moon heights are relative to a 1737.4 km sphere",
+        "interp": "LOLA LDEM cells filled by GMT 'surface' interpolation cannot be identified (LDAC counts not loaded).",
+    },
+}
+
+
+def check_grid_compatibility(target_spacing_m: float, candidate_spacing_m: float) -> str | None:
+    """Return a reason string if the candidate grid is not comparable with the target grid."""
+    rel = abs(candidate_spacing_m - target_spacing_m) / target_spacing_m
+    if rel > MAX_SPACING_MISMATCH:
+        return (f"analysis spacing {candidate_spacing_m:.1f} m differs from target spacing "
+                f"{target_spacing_m:.1f} m by {rel:.1%} (> {MAX_SPACING_MISMATCH:.0%})")
+    return None
+
+
 def analyze_mars_target(megdr_label: Path, lat: float, lon: float, srtm_tiles: list[str], srtm_raw: Path,
-                        work_dir: Path, patch_km: float = 40.0, stride_km: float = 10.0,
-                        windows_m=DEFAULT_WINDOWS_M, weights: dict[str, float] | None = None,
-                        progress: ProgressFn = _noop_progress, should_cancel: CancelFn = _never) -> AnalysisResult:
-    progress(0.0, "Reading Mars target")
-    product = mola_megdr.open_megdr(megdr_label)
-    target = mola_megdr.read_window(product, *mola_megdr.window_from_center_km(product, lat, lon, patch_km))
+                        work_dir: Path, **kw) -> "AnalysisResult":
+    """Backward-compatible entry point: Mars (MOLA MEGDR) target."""
+    return analyze_target("MARS", megdr_label, lat, lon, srtm_tiles, srtm_raw, work_dir, **kw)
+
+
+def analyze_target(body: str, label: Path, lat: float, lon: float, srtm_tiles: list[str], srtm_raw: Path,
+                   work_dir: Path, patch_km: float = 40.0, stride_km: float = 10.0,
+                   windows_m=DEFAULT_WINDOWS_M, weights: dict[str, float] | None = None,
+                   progress: ProgressFn = _noop_progress, should_cancel: CancelFn = _never) -> AnalysisResult:
+    if body not in _BODY:
+        raise MetricError(f"Unsupported target body {body!r}; supported: {sorted(_BODY)}.")
+    b = _BODY[body]
+    progress(0.0, f"Reading {b['name']} target")
+    product = b["open"](label)
+    target = b["reader"].read_window(product, *b["reader"].window_from_center_km(product, lat, lon, patch_km))
     tm = terrain_metrics(target, windows_m)
     spacing = native_spacing_m(target)
     scan, cov = scan_srtm_tiles(
@@ -183,7 +220,13 @@ def analyze_mars_target(megdr_label: Path, lat: float, lon: float, srtm_tiles: l
     _check(should_cancel)
     progress(0.9, "Ranking candidates")
     target_features = features_from_metrics(tm)
+    for c in scan.candidates + scan.fill_excluded:
+        if (why := check_grid_compatibility(spacing, c.analysis_spacing_m)):
+            c.features = {}  # never compared; recorded as an exclusion reason below
+            c.flags.append(f"grid_incompatible: {why}")
     ranking = rank_candidates(target_features, scan.candidates, weights)
+    for r in ranking.results:
+        r.exclusion_reasons.extend(f for f in r.flags if f.startswith("grid_incompatible") and f not in r.exclusion_reasons)
 
     fill_note = "fill-excluded run not available (no NUM data)"
     if scan.fill_excluded:
@@ -203,18 +246,19 @@ def analyze_mars_target(megdr_label: Path, lat: float, lon: float, srtm_tiles: l
     progress(1.0, "Done")
 
     return AnalysisResult(
-        target={"body": "MARS", "center_lat": lat, "center_lon_east": lon, "patch_km": patch_km,
+        target={"body": body, "center_lat": lat, "center_lon_east": lon, "patch_km": patch_km,
                 "bounds": {"lat_min": target.grid.lat_bottom, "lat_max": target.grid.lat_top,
                            "lon_min": target.grid.lon_west, "lon_max": target.grid.lon_east}},
         target_metrics=tm, target_record=target.record, earth_records=scan.records,
         settings={"patch_km": patch_km, "stride_km": stride_km, "windows_m": list(windows_m),
-                  "analysis_spacing_m": spacing, "weights": "equal" if weights is None else weights},
+                  "analysis_spacing_m": spacing, "max_spacing_mismatch": MAX_SPACING_MISMATCH,
+                  "weights": "equal" if weights is None else weights},
         coverage=cov, ranking=ranking,
         limitations=[
             "Topographic statistics only; climate, vegetation, composition and geology are not compared.",
             "Compared at the coarser common grid spacing; finer Earth detail is averaged away.",
-            "Mars topography is relative to the areoid and Earth to the EGM96 geoid; absolute elevations are not compared.",
-            "MOLA MEGDR cells without observations are interpolated and cannot yet be identified.",
+            f"{b['datum']} and Earth heights to the EGM96 geoid; absolute elevations are not compared.",
+            b["interp"],
             "SRTM covers 60 N to 56 S only; only the listed tiles were examined.",
             "The distance is not a probability and the method is not empirically validated.",
         ],

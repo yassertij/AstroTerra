@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { getApiBase, setApiBase } from "../lib/api";
+import { apiBaseProblem, getApiBase, setApiBase } from "../lib/api";
 
 export function Settings({ readable, setReadable, onDeleteLocalData }: {
   readable: boolean; setReadable: (v: boolean) => void; onDeleteLocalData: () => void;
 }) {
   const [url, setUrl] = useState(getApiBase());
   const [saved, setSaved] = useState(false);
+  const problem = url ? apiBaseProblem(url.trim()) : null;
   const [deleted, setDeleted] = useState(false);
   return (
     <section aria-labelledby="set-h">
@@ -13,8 +14,9 @@ export function Settings({ readable, setReadable, onDeleteLocalData }: {
       <div className="card">
         <label htmlFor="api">Analysis server address</label>
         <input id="api" type="url" value={url} onChange={(e) => { setUrl(e.target.value); setSaved(false); }} />
-        <p className="hint">Android emulator: http://10.0.2.2:8765 · same computer: http://127.0.0.1:8765</p>
-        <button onClick={() => { setApiBase(url); setSaved(true); }}>Save address</button>
+        <p className="hint">Hosted server: https://… (required outside your local network) · Android emulator: http://10.0.2.2:8765 · same computer: http://127.0.0.1:8765</p>
+        {problem && <p role="status" className="hint"><strong>Cannot use this address:</strong> {problem}</p>}
+        <button disabled={!!problem} onClick={() => { setApiBase(url); setSaved(true); }}>Save address</button>
         {saved && <span role="status"> Saved.</span>}
       </div>
       <div className="card">

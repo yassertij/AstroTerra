@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import type { AnalysisResult, CandidateResult, Datasets } from "../lib/api";
 import type { Route } from "../App";
-import { candidateValue, explain, label, pct, unit } from "../lib/labels";
+import { bodyName, bodySource, candidateValue, explain, label, pct, unit } from "../lib/labels";
 import { EarthMap, tileBounds, type MapTile } from "./EarthMap";
 import { PhotoPanel, type PhotoState } from "./PhotoPanel";
 import { Button } from "./ui/Button";
@@ -37,9 +37,9 @@ function LocationPanel({ c, res, onCompare, inCompare, go }: {
         <dt>Climate</dt><dd>{NA}</dd>
         <dt>Geology</dt><dd>{NA}</dd>
         <dt>Similarity</dt>
-        <dd>{c.excluded ? c.exclusion_reasons.join("; ") : <>Distance <strong className="mono">{c.distance?.toFixed(2)}</strong> (lower = more similar). {explain(c.contributions, c.feature_differences)}</>}</dd>
+        <dd>{c.excluded ? c.exclusion_reasons.join("; ") : <>Distance <strong className="mono">{c.distance?.toFixed(2)}</strong> (lower = more similar). {explain(c.contributions, c.feature_differences, bodyName(t.body))}</>}</dd>
         <dt>Planetary analogue</dt>
-        <dd>Mars target{t.center_lat != null ? ` at ${Math.abs(t.center_lat).toFixed(2)}° ${t.center_lat >= 0 ? "N" : "S"}, ${t.center_lon_east?.toFixed(2)}° E` : ""}, {t.patch_km} km patch (MOLA MEGDR)</dd>
+        <dd>{bodyName(t.body)} target{t.center_lat != null ? ` at ${Math.abs(t.center_lat).toFixed(2)}° ${t.center_lat >= 0 ? "N" : "S"}, ${t.center_lon_east?.toFixed(2)}° E` : ""}, {t.patch_km} km patch ({bodySource(t.body)})</dd>
         <dt>Data quality</dt><dd>Valid {pct(c.valid_fraction)} · void fill {pct(c.fill_fraction)} · compared at ~{c.analysis_spacing_m.toFixed(0)} m</dd>
       </dl>
       <div className="row" style={{ marginTop: 12 }}>
@@ -80,7 +80,7 @@ export function EarthPage({ datasets, dsError, onRetry, result, photo, setPhoto,
     <section aria-labelledby="earth-h">
       <div className="page-head">
         <p className="eyebrow">Earth locations · SRTM GL1 v3</p>
-        <h2 id="earth-h">Where on Earth does the terrain look like Mars?</h2>
+        <h2 id="earth-h">Where on Earth does the terrain look like {result ? bodyName(result.target.body) : "Mars or the Moon"}?</h2>
         <p className="lead">Candidate patches from the latest analysis, on NASA imagery. Only downloaded tiles are examined.</p>
       </div>
       {dsError && (

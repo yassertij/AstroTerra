@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { api, ApiError, type Datasets } from "../lib/api";
-import { FEATURE_KEYS, label } from "../lib/labels";
+import { api, ApiError, type Body, type Datasets } from "../lib/api";
+import { bodyName, bodySource, FEATURE_KEYS, fmtVersion, label } from "../lib/labels";
 import type { useJob } from "../lib/useJob";
 import { JobStatus } from "./JobStatus";
 import { ErrorBox } from "./ErrorBox";
@@ -10,6 +10,7 @@ type Jobs = ReturnType<typeof useJob>;
 export function Analyse({ jobs, extraTiles, onShowResults }: { jobs: Jobs; extraTiles: string[]; onShowResults: () => void }) {
   const [ds, setDs] = useState<Datasets | null>(null);
   const [loadErr, setLoadErr] = useState<ApiError | null>(null);
+  const [body, setBody] = useState<Body>("MARS");
   const [lat, setLat] = useState("-5.4");
   const [lon, setLon] = useState("137.8");
   const [patch, setPatch] = useState("40");
@@ -32,6 +33,20 @@ export function Analyse({ jobs, extraTiles, onShowResults }: { jobs: Jobs; extra
     if (extraTiles.length) setTiles((t) => Array.from(new Set([...t, ...extraTiles])));
   }, [extraTiles]);
 
+  // Example defaults only: Gale crater (Mars) and the Taurus-Littrow valley (Moon). Any target inside a product works.
+  const chooseBody = (b: Body) => {
+    setBody(b);
+    if (b === "MOON") { setLat("20.19"); setLon("30.77"); } else { setLat("-5.4"); setLon("137.8"); }
+  };
+  const products = body === "MOON" ? (ds?.moon_lola ?? []) : (ds?.mars_megdr ?? []);
+  const moonAvailable = (ds?.moon_lola?.length ?? 0) > 0;
+  const latN = Number(lat), lonN = Number(lon), patchN = Number(patch), strideN = Number(stride);
+  const formProblem = !Number.isFinite(latN) || latN < -88 || latN > 88 ? "Latitude must be between -88 and 88 degrees."
+    : !Number.isFinite(lonN) || lonN < 0 || lonN >= 360 ? "Longitude must be east longitude from 0 to less than 360 degrees (convert west longitudes: 360 - W)."
+    : !Number.isFinite(patchN) || patchN < 10 || patchN > 80 ? "Patch size must be 10 to 80 km."
+    : !Number.isFinite(strideN) || strideN < 2 || strideN > 40 ? "Spacing between patches must be 2 to 40 km."
+    : products.length === 0 && ds ? `No validated ${bodyName(body)} product is on the server.` : null;
+
   const running = jobs.job && (jobs.job.status === "queued" || jobs.job.status === "running");
   const allTiles = Array.from(new Set([...(ds?.earth_srtm.map((x) => x.tile) ?? []), ...extraTiles]));
 
@@ -42,8 +57,8 @@ export function Analyse({ jobs, extraTiles, onShowResults }: { jobs: Jobs; extra
     try {
       const w = custom ? Object.fromEntries(Object.entries(weights).map(([k, v]) => [k, Number(v)])) : null;
       const j = await api.submit({
-        target: { lat: Number(lat), lon_east: Number(lon), patch_km: Number(patch) },
-        earth_tiles: tiles, stride_km: Number(stride), weights: w,
+        target: { body, lat: latN, lon_east: lonN, patch_km: patchN },
+        earth_tiles: tiles, stride_km: strideN, weights: w,
       });
       jobs.start(j.id);
     } catch (err) {
@@ -58,19 +73,26 @@ export function Analyse({ jobs, extraTiles, onShowResults }: { jobs: Jobs; extra
       <div className="page-head">
         <p className="eyebrow">Analysis · background job</p>
         <h2 id="an-h">Set up an analysis</h2>
-        <p className="lead">Pick a Mars target and the Earth tiles to examine. The server ranks every Earth patch by terrain-shape distance.</p>
+        <p className="lead">Pick a Mars or Moon target and the Earth tiles to examine. The server ranks every Earth patch by terrain-shape distance.</p>
       </div>
       {jobs.jobId && <JobStatus jobs={jobs} onShowResults={onShowResults} />}
       {loadErr && <ErrorBox error={loadErr} onRetry={load} />}
 
       <form onSubmit={submit}>
         <div className="card">
-          <h3>Mars target (MOLA MEGDR)</h3>
-          {ds && ds.mars_megdr.length === 0 && <p>No MOLA tile is available on the server.</p>}
-          {ds?.mars_megdr.map((m) => (
+          <h3>Target body</h3>
+          <fieldset style={{ border: 0, padding: 0 }}>
+            <legend className="sr-only">Target body</legend>
+            <label className="check"><input type="radio" name="body" checked={body === "MARS"} onChange={() => chooseBody("MARS")} /> Mars (MOLA MEGDR)</label>
+            <label className="check"><input type="radio" name="body" checked={body === "MOON"} disabled={!moonAvailable} onChange={() => chooseBody("MOON")} />
+              Moon (LOLA LDEM_64){!moonAvailable && " — unavailable: no validated lunar product on the server"}</label>
+          </fieldset>
+          <h3>{bodyName(body)} target ({bodySource(body)})</h3>
+          {ds && products.length === 0 && <p>No {bodySource(body)} product is available on the server.</p>}
+          {products.map((m) => (
             <p key={m.product_id} className="hint">
-              Available: {m.product_id} v{m.version} — latitude {m.lat[0]}° to {m.lat[1]}°, east longitude {m.lon_east[0]}° to {m.lon_east[1]}°
-              (planetocentric). Heights relative to the areoid.
+              Available: {m.product_id} {fmtVersion(m.version)} — latitude {m.lat[0]}° to {m.lat[1]}°, east longitude {m.lon_east[0]}° to {m.lon_east[1]}°
+              (planetocentric). {body === "MOON" ? "Heights above a 1737.4 km sphere" : "Heights relative to the areoid"}; absolute heights are never compared with Earth.
             </p>
           ))}
           <div className="grid2">
@@ -131,8 +153,9 @@ export function Analyse({ jobs, extraTiles, onShowResults }: { jobs: Jobs; extra
           )}
         </div>
 
+        {formProblem && <p role="status" className="hint"><strong>Check the form:</strong> {formProblem}</p>}
         {submitErr && <ErrorBox error={submitErr} />}
-        <button className="btn btn-aurora btn-lg" type="submit" disabled={busy || !!running || tiles.length === 0} aria-busy={busy || undefined}>
+        <button className="btn btn-aurora btn-lg" type="submit" disabled={busy || !!running || tiles.length === 0 || !!formProblem} aria-busy={busy || undefined}>
           {busy && <span className="spinner" aria-hidden="true" />}
           {running ? "Analysis running…" : "Run analysis"}
         </button>

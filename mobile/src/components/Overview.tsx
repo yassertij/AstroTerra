@@ -34,10 +34,12 @@ export function Overview({ go, datasets, result }: { go: (r: Route) => void; dat
           <Button size="sm" onClick={() => go("mars")} icon={<Icon name="arrow" />}>Mars analogues</Button>
         </article>
         <article className="card moon lift">
-          <p className="eyebrow">Moon · LOLA GDRDEM</p>
-          <div className="stat">Not yet</div>
-          <p>Lunar topography is planned but not integrated. No lunar result is shown anywhere in the app.</p>
-          <Button size="sm" onClick={() => go("moon")} icon={<Icon name="arrow" />}>Status</Button>
+          <p className="eyebrow">Moon · LOLA LDEM_64</p>
+          <div className="stat">{datasets ? (datasets.moon_lola?.length ?? 0) : "—"}</div>
+          <p>{datasets && (datasets.moon_lola?.length ?? 0) > 0
+            ? "Validated LOLA height grid (64 px/°, ≈ 474 m), heights above a 1737.4 km sphere."
+            : "No validated lunar product on the server, so Moon analysis is unavailable."}</p>
+          <Button size="sm" onClick={() => go("moon")} icon={<Icon name="arrow" />}>Moon analogues</Button>
         </article>
         <article className="card lift">
           <p className="eyebrow">Latest analysis</p>
@@ -47,7 +49,7 @@ export function Overview({ go, datasets, result }: { go: (r: Route) => void; dat
               <p>Best distance (lower = more similar) among {result!.ranking.results.filter((r) => !r.excluded).length} Earth candidates — {best.candidate_id}.</p>
             </>
           ) : <p>No analysis in this session yet.</p>}
-          <Button size="sm" variant="blue" onClick={() => go(best ? "mars" : "analysis")} icon={<Icon name="analysis" />}>
+          <Button size="sm" variant="blue" onClick={() => go(best ? (result!.target.body === "MOON" ? "moon" : "mars") : "analysis")} icon={<Icon name="analysis" />}>
             {best ? "View ranking" : "Run an analysis"}
           </Button>
         </article>
