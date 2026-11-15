@@ -17,13 +17,14 @@ Legend: ✅ verified here (test or recorded run) · ⚠️ implemented, not veri
 | ✅ App shows only validated results; bounded retries; polling stops on stall | `resilience.test.tsx` |
 | ✅ Moon offered only when a validated LOLA product exists | `resilience.test.tsx`, live run |
 | ✅ Release Android manifest: cleartext disabled; app origin https | merged manifest, synced `capacitor.config.json` |
-| ✅ Debug APK builds | `dist/PlanetaryAnalogFinder-0.2.0-debug.apk` |
+| ✅ Debug APK builds; contains the exact web build | `dist/PlanetaryAnalogFinder-0.2.1-debug-usb.apk` |
+| ✅ Runs on a real phone: install, launch, server connection, Mars analysis, results identical to API, CSV export | Galaxy S24 Ultra, Android 16 ([validation.md](validation.md#device-run-2026-11-15-samsung-galaxy-s24-ultra-sm-s928b-android-16)) |
 
 ## Not verified
 
 | Item | Why |
 |---|---|
-| ⚠️ App installed and run on Android (emulator or device): navigation, analysis, export download in the WebView, permission prompts, restart/offline | No emulator or device available on this machine |
+| ⚠️ On the phone: Moon analysis, photo/location permission prompts, restart during a job, offline, other devices | Not run yet |
 | ⚠️ Release APK signing and store packaging | Needs the owner's keystore; `app-release-unsigned.apk` only |
 | ⚠️ Hosted HTTPS deployment, CORS for release origins | Hosting not chosen; documented in [api.md](api.md) |
 | ⚠️ Rate limiting behind a reverse proxy | All clients may share the proxy address; configure limits at the proxy |
@@ -42,7 +43,7 @@ Legend: ✅ verified here (test or recorded run) · ⚠️ implemented, not veri
 
 ## Before a public release
 
-1. Run the APK on at least one emulator and one device; record results in validation.md.
+1. Repeat the device run on a second phone and the remaining flows (Moon, permissions, offline).
 2. Deploy the API behind TLS; build with `VITE_PAF_API_BASE=https://…` and `PAF_RELEASE=1`.
 3. Choose the final `appId`, sign the release APK, set `versionCode`/`versionName`.
 4. Decide on authentication for the API.

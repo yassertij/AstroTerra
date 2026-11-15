@@ -32,8 +32,9 @@ Full evidence: [validation.md](validation.md) · [release-checklist.md](release-
 
 ## Not verified / limitations (say these out loud)
 
-- The APK builds, but **has not been run on a phone or emulator** unless the testing report
-  below says otherwise. Demo from the browser build.
+- The app has been run end to end on **one** phone (Galaxy S24 Ultra, Android 16) over a
+  USB cable: Mars analysis, results and CSV export. The Moon flow, permissions and offline
+  behaviour have not been checked on the phone yet.
 - Only **one Earth tile** (N38W111, Utah) is on disk, so "best analog" means best within
   that tile — both recorded runs say *no close analog* (best distances 8.1 and 8.8).
 - The method is **not validated** against known analog sites; scores are relative to the
@@ -43,7 +44,14 @@ Full evidence: [validation.md](validation.md) · [release-checklist.md](release-
 
 ## Live demo (≈ 4 minutes)
 
-Before: start the API and web app (README "Running"); open `http://127.0.0.1:5173`.
+Before (phone over USB, tested):
+1. Phone: Developer options → USB debugging on; Samsung **Auto Blocker off**; plug in, tap Allow.
+2. PC: start the API (README "Running"), then
+   `adb install -r dist/PlanetaryAnalogFinder-0.2.1-debug-usb.apk` and
+   `adb reverse tcp:8765 tcp:8765` (repeat `adb reverse` after re-plugging the cable).
+3. App → Settings → address `http://127.0.0.1:8765` → **Test connection** → "Connected".
+
+Laptop-only alternative: start the API and web app; open `http://127.0.0.1:5173`.
 
 1. **Overview** — counts of real data on the server (1 Mars tile, 1 Moon product, 1 Earth tile).
 2. **Analysis** → Mars, Gale crater (5.4° S, 137.8° E), 40 km, tick N38W111 → Run.
@@ -60,6 +68,8 @@ Before: start the API and web app (README "Running"); open `http://127.0.0.1:517
 - **Backend or laptop network fails:** the two real results are saved as JSON in
   `data/processed/` (`m4_gale_vs_N38W111.json`, `moon_taurus_littrow_vs_N38W111.json`).
   Show them as *recorded runs from 2026-11-14/15*, not live computations.
+- **Phone can't connect:** Settings → Test connection says why. Usually the cable was
+  re-plugged (run `adb reverse tcp:8765 tcp:8765` again). Otherwise switch to the laptop browser.
 - **Browser app fails:** run the analysis with `curl` (README "Workflow example") and show
   the JSON/CSV export.
 - **Internet fails:** everything except the map basemap works offline on the laptop; the map

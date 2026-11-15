@@ -24,7 +24,7 @@ method is scientifically right.
 | 7 | Lunar analysis enabled only after passing the same standards | **Verified**: Moon is offered only when a LOLA product passes label validation; same metrics, rules and tests; real-data cross-check passes | `test_lola_gdr.py`, `test_real_lola.py`, `test_api_hardening.py::test_moon_analysis_lifecycle`; UI test that Moon is disabled without a product |
 | 8 | Rankings reproducible and explainable | **Verified** | Gale rerun identical to the 2026-11-14 record (below); seeded sensitivity; per-feature contributions |
 | 9 | Exports agree with on-screen results | **Verified** (web build) | Real Moon run: on-screen table, `/result`, JSON export and CSV export identical for all 40 ranked rows; export has no coordinates by default |
-| 10 | Android packaging and critical E2E flows pass | **Partly.** Debug and release APKs build; release manifest has cleartext off. **No emulator or device was available: nothing was run natively** | Gradle builds; merged-manifest check |
+| 10 | Android packaging and critical E2E flows pass | **Verified on one real phone for the main flow** (Galaxy S24 Ultra, Android 16, debug APK over USB). Release APK builds with cleartext off but was not installed | Device run below |
 | 11 | Production configuration secure and documented | **Done in code and docs; hosting not deployed** | HTTPS rule in the app, debug-only cleartext, body/rate/queue limits, structured errors ([api.md](api.md)) |
 | 12 | Limitations disclosed | **Done** | README, methodology, this file |
 
@@ -72,10 +72,33 @@ matched LDEM_16 with median absolute differences of 5–23 m (local relief 3.0�
 one-pixel shift raised them to 14–113 m. This confirms registration, byte order and the
 DN × 0.5 m scaling (no OFFSET added).
 
+## Device run (2026-11-15, Samsung Galaxy S24 Ultra SM-S928B, Android 16)
+
+Debug APK `PlanetaryAnalogFinder-0.2.1-debug-usb.apk` (default server `http://127.0.0.1:8765`)
+installed over USB (`adb install -r`), API reached through `adb reverse tcp:8765 tcp:8765`.
+
+| Check | Result |
+|---|---|
+| Install and cold launch | OK, 514 ms, no crash in logcat |
+| App reaches the server | `GET /v1/health` and `/v1/datasets` 200 from the phone; Overview shows the real tile count |
+| Analysis on the phone (Mars, Gale 5.4° S 137.8° E, 40 km, N38W111) | queued → running ("Tile 1/1") → succeeded in 63 s |
+| Results on screen | 40 ranked rows identical to the API result (rank, id, distance); warnings, explanation and provenance shown; no synthetic banner |
+| Reproducibility | identical to the recorded reference run (same ids and ranks, max distance difference 0.0) |
+| CSV export | exported from the app on the phone (`planetary-analog-51a809d8.csv`) and shared to another app |
+| Navigation | route stays where set (checked through the WebView debugger) |
+
+First attempt (before this fix): the earlier APK defaulted to the emulator-only address
+`10.0.2.2` and the phone was on mobile data, so it showed "Cannot reach the analysis server".
+The app now names the address it tried and explains why it can fail (see audit F9).
+
+Setup note: on Galaxy S24 phones, Samsung **Auto Blocker** blocks USB debugging; it had to be
+turned off before the phone authorised the computer.
+
 ## Not verified / open
 
-- **Native Android**: install, launch, permission prompts, networking from the WebView,
-  export download inside the WebView, restart/offline behaviour. No emulator or device here.
+- **Native Android, not yet checked on the device**: photo/location permission prompts,
+  Moon analysis, app restart during a job, offline behaviour, other phones / Android versions,
+  the release APK.
 - iOS: not built (needs macOS).
 - Hosted deployment with TLS: documented, not deployed.
 - MOLA and LOLA interpolated cells are not identified (count products not loaded).
