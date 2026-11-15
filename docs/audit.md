@@ -114,6 +114,7 @@ project's NASA-only policy).
 | F6 | `EarthMap.tsx` legend note | none (the map is mocked in unit tests) | Fixed, not tested |
 | F7 (found in E2E run) | `App.tsx` reloads the dataset list on each page change; `MoonPage` shows a validated Moon result even with a stale list | live browser run only | Fixed, verified in browser |
 | F8 (found in E2E run) | `labels.fmtVersion`: LOLA version printed "vV3.1" | `resilience.test.tsx` | Fixed |
+| F9 (found on a real phone) | Debug APK defaulted to the emulator-only address `10.0.2.2`; error didn't say why. Errors now name the address and explain; Settings has Test connection; USB build defaults to `127.0.0.1` + `adb reverse` | `resilience.test.tsx` (2 tests); device run in validation.md | Fixed, verified on device |
 | X2 (found in build) | Release build failed: Capacitor's generated plugin manifest forced `usesCleartextTraffic=true`; `tools:replace` added | `assembleRelease` succeeds, merged manifest `false` | Fixed |
 
 ## Final audit (2026-11-15)

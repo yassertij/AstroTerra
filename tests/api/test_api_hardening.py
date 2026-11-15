@@ -154,3 +154,34 @@ def test_moon_target_outside_product(data_dir, tmp_path):
     with TestClient(create_app(settings(data_dir, tmp_path), start_worker=False)) as c:
         r = c.post("/v1/analyses", json={**MOON, "target": {**MOON["target"], "lat": 30.0}})
         assert r.status_code == 422 and r.json()["error"]["code"] == "target_not_available"
+
+
+@pytest.mark.parametrize("target, where", [
+    ({"body": "VENUS", "lat": 0.0, "lon_east": 11.0}, "body"),        # unsupported target body
+    ({"body": "MOON", "lat": 0.0, "lon_east": 11.0, "patch_km": 0}, "patch_km"),    # empty region
+    ({"body": "MOON", "lat": 0.0, "lon_east": 11.0, "patch_km": -40}, "patch_km"),  # negative size
+    ({"body": "MOON", "lat": 91.0, "lon_east": 11.0}, "lat"),
+    ({"body": "MOON", "lat": 0.0, "lon_east": -10.0}, "lon_east"),   # west-negative longitude not accepted
+    ({"body": "MOON", "lat": 0.0, "lon_east": 11.0, "crs": "EPSG:4326"}, "crs"),  # unsupported CRS field
+])
+def test_invalid_targets_rejected(data_dir, tmp_path, target, where):
+    with TestClient(create_app(settings(data_dir, tmp_path), start_worker=False)) as c:
+        r = c.post("/v1/analyses", json={**MOON, "target": target})
+        assert r.status_code == 422
+        e = r.json()["error"]
+        assert e["code"] == "validation_error" and any(where in "/".join(map(str, d["loc"])) for d in e["details"])
+        assert c.get("/v1/jobs").json() == []  # nothing queued
+
+
+def test_analysis_is_deterministic(data_dir, tmp_path):
+    """Two identical requests run separately give bit-identical rankings and metrics."""
+    outs = []
+    for k in range(2):
+        with TestClient(create_app(settings(data_dir, tmp_path / f"run{k}"))) as c:
+            j = wait(c, c.post("/v1/analyses", json=MOON).json()["id"], timeout=300)
+            assert j["status"] == "succeeded"
+            outs.append(c.get(f"/v1/jobs/{j['id']}/result").json())
+    a, b = outs
+    assert a["ranking"]["target_features"] == b["ranking"]["target_features"]
+    assert [(r["candidate_id"], r["rank"], r["distance"], r["sensitivity"]) for r in a["ranking"]["results"]] == \
+           [(r["candidate_id"], r["rank"], r["distance"], r["sensitivity"]) for r in b["ranking"]["results"]]

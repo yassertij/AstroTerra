@@ -82,3 +82,14 @@ def test_window_outside_rejected(tmp_path):
     p = lola_gdr.open_lola(write_lola(tmp_path))
     with pytest.raises(RasterValidationError, match="outside"):
         lola_gdr.read_window(p, 0.0, 2.0, 10.5, 11.0)
+
+
+@pytest.mark.parametrize("bounds", [
+    (0.5, -0.5, 10.5, 11.5),   # reversed latitude
+    (-0.5, 0.5, 11.5, 10.5),   # reversed longitude
+    (0.0, 0.0, 10.5, 11.5),    # empty region
+])
+def test_reversed_or_empty_window_rejected(tmp_path, bounds):
+    p = lola_gdr.open_lola(write_lola(tmp_path))
+    with pytest.raises(RasterValidationError, match="min < max"):
+        lola_gdr.read_window(p, *bounds)
