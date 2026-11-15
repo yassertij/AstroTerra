@@ -32,12 +32,27 @@ export function pct(x: number | null | undefined, digits = 1): string {
 }
 
 /** Plain-language explanation of a candidate's score. */
-export function explain(contrib: Record<string, number>, diffs: Record<string, number>): string {
+/** "2.0" -> "v2.0"; "V3.1" stays "V3.1" (LOLA versions already carry the V). */
+export function fmtVersion(v: string): string {
+  return /^v/i.test(v) ? v : `v${v}`;
+}
+
+/** Display name of a target body. */
+export function bodyName(body: string | undefined): string {
+  return body === "MOON" ? "Moon" : "Mars";
+}
+
+/** Short description of the target dataset for a body. */
+export function bodySource(body: string | undefined): string {
+  return body === "MOON" ? "LOLA LDEM_64" : "MOLA MEGDR";
+}
+
+export function explain(contrib: Record<string, number>, diffs: Record<string, number>, body = "Mars"): string {
   const top = Object.entries(contrib).sort((a, b) => b[1] - a[1]).slice(0, 2);
   if (!top.length) return "No feature differences available.";
   const parts = top.map(([f, c]) => {
     const d = diffs[f];
-    const dir = d > 0 ? "higher on the Mars target" : d < 0 ? "lower on the Mars target" : "equal";
+    const dir = d > 0 ? `higher on the ${body} target` : d < 0 ? `lower on the ${body} target` : "equal";
     return `${label(f).toLowerCase()} (${Math.round(c * 100)} % of the distance; ${dir} by ${Math.abs(d).toFixed(1)} ${unit(f)})`;
   });
   return `The distance is driven mostly by ${parts.join(" and by ")}.`;

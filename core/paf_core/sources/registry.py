@@ -1,8 +1,8 @@
 """NASA-only allow-list of datasets.
 
 Only entries here may be loaded. Every value below was checked against the official
-archive on 2026-11-13; the ``verified_from`` field says where. Entries for SRTM and
-LOLA are added in later milestones, once verified.
+archive (MOLA, SRTM: 2026-11-13; LOLA: 2026-11-15); the ``verified_from`` field says
+where.
 """
 
 from __future__ import annotations
@@ -107,13 +107,55 @@ SRTM_GL1N = ApprovedSource(
     verified_from=("https://www.earthdata.nasa.gov/data/catalog/lpcloud-srtmgl1n-003", _SRTM_GUIDE),
 )
 
+_LOLA_VOL = "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx"
+
+LOLA_GDR = ApprovedSource(
+    key="lola_gdr",
+    data_set_id="LRO-L-LOLA-4-GDR-V1.0",
+    # Verified for LDEM_64 only (label PRODUCT_VERSION_ID). Other LDEM files are not approved yet.
+    final_product_version="V3.1",
+    # DOI of the PDS4 bundle urn:nasa:pds:lro_lola_rdr, which contains this same file
+    # (ldem_64.xml, LID urn:nasa:pds:lro_lola_rdr:data_gridded:ldem_64).
+    doi="10.17189/tnyt-7007",
+    body="MOON",
+    mission="Lunar Reconnaissance Orbiter (LRO)",
+    instrument="Lunar Orbiter Laser Altimeter (LOLA)",
+    archive="NASA PDS Geosciences Node (PDS3 volume LROLOL_1XXX / PDS4 bundle lro_lola_rdr)",
+    access_url=f"{_LOLA_VOL}/data/lola_gdr/cylindrical/img/",
+    vertical_reference=(
+        "Height above a sphere of radius 1737.4 km (label OFFSET = 1737400 m, the reference "
+        "radius). HEIGHT = DN x SCALING_FACTOR (0.5 m); the OFFSET is NOT added. Not an "
+        "equipotential (geoid) surface."
+    ),
+    citation=(
+        # Bundle Citation_Information (bundle_lola_rdr.xml) and gdr_ds.cat CITATION_DESC.
+        "Smith, D.E. and Neumann, G.A., 2023. Lunar Reconnaissance Orbiter LOLA Processed (RDR) "
+        "Data Products, NASA Planetary Data System, doi:10.17189/tnyt-7007. Product LDEM_64 "
+        "(LRO-L-LOLA-4-GDR-V1.0, version V3.1); data set citation: Neumann, G.A., LRO-L-LOLA-4-GDR-V1.0, "
+        "NASA Planetary Data System, 2010."
+    ),
+    verified_from=(
+        f"{_LOLA_VOL}/data/lola_gdr/cylindrical/img/ldem_64.lbl",
+        f"{_LOLA_VOL}/data/lola_gdr/cylindrical/img/ldem_64.xml",
+        f"{_LOLA_VOL}/catalog/dsmap.cat",
+        f"{_LOLA_VOL}/catalog/gdr_ds.cat",
+        f"{_LOLA_VOL}/bundle_lola_rdr.xml",
+    ),
+    notes=(
+        "No checksum is published for ldem_64.img (none in its PDS3 or PDS4 label); the file "
+        "size is checked against RECORD_BYTES x FILE_RECORDS. Gridded with GMT 'surface' to "
+        "compensate for incomplete coverage (interpolated cells not identifiable); produced in "
+        "45-degree latitude bands with possible edge artifacts (label DESCRIPTION)."
+    ),
+)
+
 # Explicitly excluded by project policy (non-NASA or mixed provenance).
 EXCLUDED = {
     "SLDEM2015": "Combines LOLA with JAXA SELENE Terrain Camera data; excluded by policy.",
     "COPERNICUS": "Copernicus DEM (ESA / Airbus); excluded by policy.",
 }
 
-_BY_DATA_SET_ID = {s.data_set_id: s for s in (MOLA_MEGDR, SRTM_GL1, SRTM_GL1N)}
+_BY_DATA_SET_ID = {s.data_set_id: s for s in (MOLA_MEGDR, SRTM_GL1, SRTM_GL1N, LOLA_GDR)}
 
 
 def require_approved(data_set_id: str | None) -> ApprovedSource:

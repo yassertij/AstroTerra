@@ -1,8 +1,8 @@
 # Planetary Analog Finder
 
-Compares the **topography** of a Mars region with candidate regions on Earth, using only
-NASA elevation data, and ranks the Earth candidates by how similar their terrain-shape
-statistics are.
+Compares the **topography** of a Mars or Moon region with candidate regions on Earth, using
+only NASA-archived elevation data, and ranks the Earth candidates by how similar their
+terrain-shape statistics are.
 
 > **Topographic analog assessment only.** Results are not proof of geological, chemical,
 > biological or environmental equivalence. Climate, vegetation and composition are not
@@ -16,7 +16,7 @@ statistics are.
 | API | [`api/paf_api`](api/paf_api) | FastAPI, SQLite job store, one background worker |
 | Mobile app | [`mobile`](mobile) | React 19, Vite 8, Capacitor 8, exifr |
 
-More: [architecture](docs/architecture.md) · [methodology](docs/methodology.md) ·
+More: [audit](docs/audit.md) · [release checklist](docs/release-checklist.md) · [API & deployment](docs/api.md) · [architecture](docs/architecture.md) · [methodology](docs/methodology.md) ·
 [dataset cards](docs/datasets/) · [citations](docs/citations.md) ·
 [validation status](docs/validation.md) · [roadmap](docs/roadmap.md)
 
@@ -25,8 +25,13 @@ More: [architecture](docs/architecture.md) · [methodology](docs/methodology.md)
 | Body | Product | Identifier | Archive |
 |---|---|---|---|
 | Mars | MOLA MEGDR, 128 px/deg topography, final version `PRODUCT_VERSION_ID = "2.0"` | `MGS-M-MOLA-5-MEGDR-L3-V1.0`, doi:10.17189/1519460 | NASA PDS Geosciences Node |
+| Moon | LOLA GDR LDEM_64 (64 px/deg ≈ 474 m), product version V3.1 | `LRO-L-LOLA-4-GDR-V1.0`, doi:10.17189/tnyt-7007 (PDS4 bundle) | NASA PDS Geosciences Node |
 | Earth | SRTM GL1 v3 elevation | `SRTMGL1.003`, doi:10.5067/MEASURES/SRTM/SRTMGL1.003 | NASA LP DAAC |
 | Earth | SRTM GL1 v3 source numbers (NUM) | `SRTMGL1N.003`, doi:10.5067/MEASURES/SRTM/SRTMGL1N.003 | NASA LP DAAC |
+
+SRTM GL1 v3 is distributed by NASA LP DAAC, but its voids were filled from non-SRTM sources
+(ASTER GDEM, GMTED2010, USGS NED and others); the NUM file identifies them per pixel and
+candidates with more than 5 % fill are excluded.
 
 Excluded by policy: Copernicus DEM, SLDEM2015, and any product whose provenance cannot be
 traced to NASA. The allow-list lives in [`registry.py`](core/paf_core/sources/registry.py);
@@ -71,6 +76,19 @@ MD5 `1F2C70C407976DD22E79DFBB3469EBF1`; `.lbl` 4,820 bytes, MD5 `3EA548315445CDE
 Other tiles follow the naming `megt<lat><N|S><lon>hb` described on
 <https://pds-geosciences.wustl.edu/missions/mgs/megdr.html>.
 
+### Moon: LOLA LDEM_64 (no login, 531 MB)
+
+```bash
+mkdir -p data/raw/lola_gdr
+curl -f -o data/raw/lola_gdr/ldem_64.lbl https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/cylindrical/img/ldem_64.lbl
+curl -f -C - -o data/raw/lola_gdr/ldem_64.img https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/cylindrical/img/ldem_64.img
+```
+
+Expected size 530,841,600 bytes (`RECORD_BYTES × FILE_RECORDS`). No checksum is published for
+this file. Optional cross-check grid for the tests (33 MB): `ldem_16.lbl` / `ldem_16.img` from
+the same folder into `data/raw/lola_crosscheck/`. See the [dataset card](docs/datasets/lola_gdr.md).
+Until a validated LOLA product is present the Moon screen says lunar analysis is unavailable.
+
 ### Earth: SRTM GL1 v3 tile + NUM file (free NASA Earthdata Login required)
 
 1. Register at <https://urs.earthdata.nasa.gov> and confirm the e-mail.
@@ -113,20 +131,22 @@ npm --prefix mobile run dev
 ```
 
 Environment variables (all optional): `PAF_DATA_DIR` (default `./data`), `PAF_DB_PATH`
-(default `data/processed/paf_jobs.sqlite3`), `PAF_CORS_ORIGINS` (comma-separated).
+(default `data/processed/paf_jobs.sqlite3`), `PAF_CORS_ORIGINS` (comma-separated), plus the
+limits `PAF_MAX_BODY_BYTES`, `PAF_MAX_ACTIVE_JOBS`, `PAF_SUBMIT_RATE_PER_MINUTE`,
+`PAF_JOB_RETENTION_DAYS` — see [docs/api.md](docs/api.md). `GET /v1/ready` reports whether the
+server can run analyses.
 A data directory containing a file named `SYNTHETIC` marks every result as synthetic demo data.
 
-### Android APK (built, not yet run on a device)
+### Android APK (built, not yet run on a device or emulator)
 
 Requirements: Android Studio's SDK (platform 36) and **JDK 21** (Capacitor 8 / Gradle 8.14
 do not run on Android Studio's bundled Java 25).
 
-```bash
-npm --prefix mobile run build
-```
+Debug build (development: plain HTTP allowed, app served as `http://localhost`). The address
+baked in by `VITE_PAF_API_BASE` is only the default; it can be changed in Settings:
 
 ```bash
-cd mobile && npx cap sync android
+cd mobile && VITE_PAF_API_BASE=http://10.0.2.2:8765 npm run build && npx cap sync android
 ```
 
 ```bash
@@ -134,7 +154,21 @@ cd mobile/android && set JAVA_HOME=C:\Users\<you>\.jdks\jdk-21.0.13.0.2+1 && gra
 ```
 
 Output: `mobile/android/app/build/outputs/apk/debug/app-debug.apk` (debug-signed; install
-on your own phone, not for the Play Store). Permissions: coarse location, read images,
+on your own phone, not for the Play Store).
+
+Release build (HTTPS only): the web app must point to an `https://` API, Capacitor is synced
+in release mode (app served as `https://localhost`, cleartext off), and the release build
+type sets `usesCleartextTraffic="false"`:
+
+```bash
+cd mobile && VITE_PAF_API_BASE=https://<your-api-host> npm run build && PAF_RELEASE=1 npx cap sync android
+```
+
+```bash
+cd mobile/android && gradlew.bat assembleRelease
+```
+
+This produces `app-release-unsigned.apk`; sign it with your own keystore (not in the repo). Permissions: coarse location, read images,
 media location (needed for EXIF GPS on Android 10+); no camera permission (the system
 camera app is used).
 
@@ -145,9 +179,10 @@ To use it on a phone, the API must be reachable on your network:
 ```
 
 then enter `http://<your-PC-LAN-IP>:8765` in the app's Settings (emulator: `http://10.0.2.2:8765`).
+Settings accepts plain `http://` only for local/private addresses; anything else must be `https://`.
 Allow port 8765 in your firewall yourself. The API has no authentication: anyone on the
-same network can use it while it runs. The app is served as `http://localhost` with
-cleartext allowed so it can call this plain-HTTP backend.
+same network can use it while it runs. Debug builds are served as `http://localhost` with
+cleartext allowed so they can call this plain-HTTP backend; release builds are not.
 
 iOS needs macOS with Xcode (`npx cap add ios`) plus photo-library and location usage
 strings in `Info.plist`. **No native app has been run on a device or simulator yet.**

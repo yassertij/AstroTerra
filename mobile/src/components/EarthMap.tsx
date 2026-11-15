@@ -82,6 +82,10 @@ export function EarthMap({ tiles, candidates, selected, onSelect }: {
         Legend: shaded bands = outside SRTM coverage · dashed blue = SRTM tile on the server · magenta = top-3 candidates ·
         light outline = other candidates · dotted = excluded. Click a patch for details.
       </p>
+      <p className="hint">
+        The background is NASA GIBS Blue Marble <strong>imagery for orientation only</strong>; no value in the analysis comes from it.
+        All elevations and terrain metrics come from SRTM GL1 v3 tiles processed on the server.
+      </p>
       {tileError && <p role="status" className="hint"><strong>Basemap unavailable</strong> (offline or NASA GIBS unreachable). Tiles and candidates are still drawn.</p>}
     </div>
   );

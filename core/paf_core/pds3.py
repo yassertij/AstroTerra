@@ -1,7 +1,8 @@
 """Minimal PDS3 ODL label parser.
 
-Handles what MOLA MEGDR labels use: KEY = VALUE pairs, quoted (multi-line) strings,
+Handles what MOLA MEGDR and LOLA GDR labels use: KEY = VALUE pairs, quoted (multi-line) strings,
 values with units (``3396.0 <KM>``), pointers (``^IMAGE``), parenthesised lists,
+``{set}`` values spread over several lines,
 ``/* comments */``, and nested OBJECT / END_OBJECT blocks. Label text is only ever
 parsed as data, never evaluated.
 """
@@ -57,6 +58,19 @@ def _convert(raw: str) -> Any:
     return s  # enumerated symbol, list, or date: keep as text
 
 
+def _incomplete(value: str) -> bool:
+    """True while a value has an open quote or an unclosed ( or { outside quotes."""
+    depth, quoted = 0, False
+    for ch in value:
+        if ch == '"':
+            quoted = not quoted
+        elif not quoted and ch in "({":
+            depth += 1
+        elif not quoted and ch in ")}":
+            depth -= 1
+    return quoted or depth > 0
+
+
 def parse_label_text(text: str) -> Label:
     text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
     lines = text.splitlines()
@@ -74,17 +88,15 @@ def parse_label_text(text: str) -> Label:
             raise LabelParseError(f"Line {i}: expected KEY = VALUE, got {line[:60]!r}")
         key, _, value = line.partition("=")
         key, value = key.strip(), value.strip()
-        # Multi-line quoted strings and parenthesised lists.
+        # Multi-line quoted strings, parenthesised lists and {set} values (LOLA labels
+        # spread sets of quoted strings over several lines).
+        while i < len(lines) and _incomplete(value):
+            value += " " + lines[i].strip()
+            i += 1
         if value.count('"') % 2 == 1:
-            while i < len(lines) and value.count('"') % 2 == 1:
-                value += " " + lines[i].strip()
-                i += 1
-            if value.count('"') % 2 == 1:
-                raise LabelParseError(f"Unterminated quoted string for {key}")
-        elif value.startswith("(") and value.count("(") > value.count(")"):
-            while i < len(lines) and value.count("(") > value.count(")"):
-                value += lines[i].strip()
-                i += 1
+            raise LabelParseError(f"Unterminated quoted string for {key}")
+        if _incomplete(value):
+            raise LabelParseError(f"Unbalanced brackets in value of {key}")
         if key == "OBJECT":
             block = Label()
             name = _convert(value)

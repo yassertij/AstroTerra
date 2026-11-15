@@ -10,7 +10,7 @@ export function MethodPage() {
       </div>
       <div className="grid-cards">
         <article className="card"><p className="eyebrow">1 · Common grid</p>
-          <p>Earth (SRTM, ~30 m) is block-averaged to the Mars spacing (MOLA, ~463 m). Nothing is upsampled; resampling adds no information.</p></article>
+          <p>Earth (SRTM, ~30 m) is block-averaged to the target spacing (Mars MOLA ~463 m; Moon LOLA LDEM_64 ~474 m north–south). Nothing is upsampled; resampling adds no information.</p></article>
         <article className="card"><p className="eyebrow">2 · Terrain metrics</p>
           <p>Median slope (°); local relief (m) and roughness (m, residual of a fitted plane) on 5, 10 and 20 km windows. Absolute heights are never compared.</p></article>
         <article className="card"><p className="eyebrow">3 · Distance</p>
@@ -21,9 +21,9 @@ export function MethodPage() {
       <div className="card">
         <p className="eyebrow">Roadmap</p>
         <ul>
-          <li>Native Android/iOS testing; MOLA observation counts to flag interpolated Mars cells.</li>
+          <li>Native Android/iOS testing; MOLA and LOLA observation counts to flag interpolated cells.</li>
           <li>More Earth tiles with a fixed reference scale; hillshade previews.</li>
-          <li>Moon (LOLA GDRDEM) once its labels are verified.</li>
+          <li>Moon (LOLA LDEM_64) is integrated; higher-resolution lunar tiles would need mosaicking.</li>
         </ul>
       </div>
       <Sources />

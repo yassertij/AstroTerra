@@ -32,7 +32,8 @@ function MarsExtent({ datasets, target }: { datasets: Datasets | null; target?: 
 }
 
 export function MarsPage({ jobs, photo, datasets, go }: { jobs: ReturnType<typeof useJob>; photo: PhotoState; datasets: Datasets | null; go: (r: Route) => void }) {
-  const res = jobs.result;
+  const latest = jobs.result;
+  const res = latest?.target.body === "MOON" ? null : latest;
   const tm = res?.target_metrics;
   return (
     <section aria-labelledby="mars-h">
@@ -69,7 +70,9 @@ export function MarsPage({ jobs, photo, datasets, go }: { jobs: ReturnType<typeo
         </article>
       </div>
 
-      <Results jobs={jobs} photo={photo} />
+      {latest?.target.body === "MOON"
+        ? <p className="card">The latest analysis used a Moon target. <Button size="sm" variant="ghost" onClick={() => go("moon")}>Open its results</Button></p>
+        : <Results jobs={jobs} photo={photo} />}
     </section>
   );
 }

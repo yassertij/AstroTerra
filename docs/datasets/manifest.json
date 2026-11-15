@@ -1,0 +1,33 @@
+{
+  "description": "Raw files used by the recorded runs. md5_local was computed on this machine after download; 'published_checksum' says whether the archive publishes one and whether it matched. Files live in data/raw/ (not in Git).",
+  "recorded": "2026-11-15",
+  "files": [
+    {"path": "mola_megdr/megt00n090hb.lbl", "bytes": 4820, "md5_local": "3EA548315445CDEE09B54FCBBC722E14",
+     "source": "https://pds-geosciences.wustl.edu/mgs/mgs-m-mola-5-megdr-l3-v1/mgsl_300x/meg128/megt00n090hb.lbl",
+     "published_checksum": "matches volume checksum file mgsl_300x_201204.md5"},
+    {"path": "mola_megdr/megt00n090hb.img", "bytes": 129761280, "md5_local": "1F2C70C407976DD22E79DFBB3469EBF1",
+     "source": "https://pds-geosciences.wustl.edu/mgs/mgs-m-mola-5-megdr-l3-v1/mgsl_300x/meg128/megt00n090hb.img",
+     "published_checksum": "matches volume checksum file mgsl_300x_201204.md5"},
+    {"path": "srtm/N38W111.SRTMGL1.hgt.zip", "bytes": 11827705, "md5_local": "93525F7299231DA1D003AE77DFBC5B33",
+     "source": "https://data.lpdaac.earthdatacloud.nasa.gov/lp-prod-protected/SRTMGL1.003/N38W111.SRTMGL1.hgt/N38W111.SRTMGL1.hgt.zip",
+     "published_checksum": "none published; zip CRC verified on load"},
+    {"path": "srtm/N38W111.SRTMGL1N.num.zip", "bytes": 392681, "md5_local": "8779DE6CE6555351C7A88EA5F6D975B2",
+     "source": "https://data.lpdaac.earthdatacloud.nasa.gov/lp-prod-protected/SRTMGL1N.003/N38W111.SRTMGL1N.num/N38W111.SRTMGL1N.num.zip",
+     "published_checksum": "none published; zip CRC verified on load"},
+    {"path": "lola_gdr/ldem_64.lbl", "bytes": 5128, "md5_local": "283B33ABBC9463C2EF56F26BBBBB778F",
+     "source": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/cylindrical/img/ldem_64.lbl",
+     "published_checksum": "none published"},
+    {"path": "lola_gdr/ldem_64.img", "bytes": 530841600, "md5_local": "178A603A317307F8AA14AD8F03DA45A9",
+     "source": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/cylindrical/img/ldem_64.img",
+     "published_checksum": "none published (not in ldem_64.lbl or ldem_64.xml); size equals RECORD_BYTES x FILE_RECORDS; registration and scaling cross-checked against ldem_16.img"},
+    {"path": "lola_gdr/ldem_64.xml", "bytes": 11947, "md5_local": "381A4907D120AD840C865DDDC58F8A07",
+     "source": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/cylindrical/img/ldem_64.xml",
+     "published_checksum": "none published"},
+    {"path": "lola_crosscheck/ldem_16.lbl", "bytes": 5121, "md5_local": "550F6CD73EC11543709FAF1226E0A7D2",
+     "source": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/cylindrical/img/ldem_16.lbl",
+     "published_checksum": "none published"},
+    {"path": "lola_crosscheck/ldem_16.img", "bytes": 33177600, "md5_local": "87D937CF968462A61043E1E5B3166D65",
+     "source": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/cylindrical/img/ldem_16.img",
+     "published_checksum": "none published; used only by tests as an independent cross-check"}
+  ]
+}

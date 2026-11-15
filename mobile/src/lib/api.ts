@@ -6,7 +6,11 @@ export class ApiError extends Error {
   }
 }
 
-const DEFAULT_BASE = "http://127.0.0.1:8765";
+// Production builds take the server address from VITE_PAF_API_BASE at build time (it must be
+// https:// unless it is a local/private address). Development builds fall back to the local
+// API. Users can override the address in Settings.
+const ENV_BASE = ((import.meta.env.VITE_PAF_API_BASE as string | undefined) ?? "").replace(/\/+$/, "");
+export const DEFAULT_BASE = ENV_BASE || (import.meta.env.DEV ? "http://127.0.0.1:8765" : "");
 const KEY = "paf.apiBase";
 
 export function getApiBase(): string {
@@ -19,20 +23,64 @@ export function getApiBase(): string {
 
 export function setApiBase(url: string): void {
   try {
-    localStorage.setItem(KEY, url.replace(/\/+$/, ""));
+    localStorage.setItem(KEY, url.trim().replace(/\/+$/, ""));
   } catch {
     /* storage unavailable: setting lasts for this session only */
   }
 }
 
+const PRIVATE_HOST = /^(localhost|127\.0\.0\.1|\[::1\]|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)$/;
+
+/** Why an address cannot be used, or null. Plain HTTP is accepted only for local/private-network hosts. */
+export function apiBaseProblem(base: string): string | null {
+  if (!base) return "No analysis server is configured. Enter its address in Settings.";
+  let u: URL;
+  try {
+    u = new URL(base);
+  } catch {
+    return "The server address is not a valid URL (example: https://analysis.example.org).";
+  }
+  if (u.protocol === "https:") return null;
+  if (u.protocol === "http:" && PRIVATE_HOST.test(u.hostname)) return null;
+  return "Use https:// for a server outside your local network; plain http:// is allowed only for local or private-network addresses.";
+}
+
+const TRANSIENT = new Set([502, 503, 504]);
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+export const RETRY = { attempts: 3, baseDelayMs: 500 };
+
+/** Bounded retry with exponential backoff, for transient failures only (network, 502/503/504). */
+export async function withRetry<T>(fn: () => Promise<T>, attempts = RETRY.attempts, baseDelayMs = RETRY.baseDelayMs): Promise<T> {
+  for (let i = 0; ; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      const err = e as ApiError;
+      const transient = err.code === "network_error" || TRANSIENT.has(err.status);
+      if (!transient || i >= attempts - 1) throw e;
+      await sleep(baseDelayMs * 2 ** i);
+    }
+  }
+}
+
+function newIdempotencyKey(): string {
+  const c = globalThis.crypto as Crypto | undefined;
+  if (c?.randomUUID) return c.randomUUID();
+  return `k${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
+}
+
 async function request<T>(path: string, init?: RequestInit, timeoutMs = 15000): Promise<T> {
+  const problem = apiBaseProblem(getApiBase());
+  if (problem) throw new ApiError(0, "config_error", problem);
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), timeoutMs);
   let res: Response;
   try {
     res = await fetch(`${getApiBase()}/v1${path}`, { ...init, signal: ctl.signal });
   } catch {
-    throw new ApiError(0, "network_error", "Cannot reach the analysis server. Check the connection and the server address in Settings.");
+    throw new ApiError(0, "network_error", ctl.signal.aborted
+      ? `The analysis server did not answer within ${timeoutMs / 1000} s. Check the connection and the server address in Settings.`
+      : "Cannot reach the analysis server. Check the connection and the server address in Settings.");
   } finally {
     clearTimeout(timer);
   }
@@ -63,22 +111,29 @@ export type Job = {
   updated: string;
 };
 
+export type Body = "MARS" | "MOON";
 export type AnalysisRequest = {
-  target: { lat: number; lon_east: number; patch_km: number };
+  target: { body?: Body; lat: number; lon_east: number; patch_km: number };
   earth_tiles: string[];
   stride_km: number;
   weights?: Record<string, number> | null;
 };
 
+const get = <T,>(path: string, timeoutMs?: number) => withRetry(() => request<T>(path, undefined, timeoutMs));
+
 export const api = {
-  health: () => request<{ status: string; synthetic_data: boolean; disclaimer: string; core_version: string }>("/health"),
-  sources: () => request<{ approved: Source[]; excluded: Record<string, string> }>("/sources"),
-  datasets: () => request<Datasets>("/datasets"),
-  submit: (body: AnalysisRequest) =>
-    request<Job>("/analyses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
+  health: () => get<{ status: string; synthetic_data: boolean; disclaimer: string; core_version: string }>("/health"),
+  sources: () => get<{ approved: Source[]; excluded: Record<string, string> }>("/sources"),
+  datasets: () => get<Datasets>("/datasets"),
+  /** One idempotency key per submission, reused on retries, so a retry never queues a second job. */
+  submit: (body: AnalysisRequest) => {
+    const headers = { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() };
+    return withRetry(() => request<Job>("/analyses", { method: "POST", headers, body: JSON.stringify(body) }));
+  },
   job: (id: string) => request<Job>(`/jobs/${encodeURIComponent(id)}`),
   cancel: (id: string) => request<Job>(`/jobs/${encodeURIComponent(id)}/cancel`, { method: "POST" }),
-  result: (id: string) => request<AnalysisResult>(`/jobs/${encodeURIComponent(id)}/result`, undefined, 60000),
+  /** Returns unvalidated JSON: callers must run validateResult() before showing it. */
+  result: (id: string) => get<unknown>(`/jobs/${encodeURIComponent(id)}/result`, 60000),
   exportUrl: (id: string, format: "json" | "csv", includeCoordinates: boolean) =>
     `${getApiBase()}/v1/jobs/${encodeURIComponent(id)}/export?format=${format}&include_coordinates=${includeCoordinates}`,
 };
@@ -89,9 +144,15 @@ export type Source = {
   citation: string; verified_from: string[]; notes: string;
 };
 
+export type TargetProduct = {
+  product_id: string; data_set_id: string; version: string; lat: [number, number]; lon_east: [number, number];
+  quality_flags: string[]; spacing_m?: number;
+};
+
 export type Datasets = {
   synthetic_data: boolean;
-  mars_megdr: { product_id: string; data_set_id: string; version: string; lat: [number, number]; lon_east: [number, number]; quality_flags: string[] }[];
+  mars_megdr: TargetProduct[];
+  moon_lola?: TargetProduct[];
   earth_srtm: { tile: string; num_file: boolean }[];
 };
 
@@ -113,7 +174,7 @@ export type CandidateResult = {
 };
 export type AnalysisResult = {
   disclaimer: string; is_synthetic: boolean; software_version: string;
-  target: { body: string; patch_km: number; center_lat?: number; center_lon_east?: number;
+  target: { body: Body; patch_km: number; center_lat?: number; center_lon_east?: number;
     bounds?: { lat_min: number; lat_max: number; lon_min: number; lon_max: number } };
   target_metrics: { slope: { median: number; p90?: number }; flags: string[]; elevation_mean_m?: number; elevation_std_m?: number; valid_fraction?: number };
   target_record: DatasetRecord; earth_records: Record<string, DatasetRecord>;

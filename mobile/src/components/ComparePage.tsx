@@ -1,6 +1,6 @@
 import type { AnalysisResult } from "../lib/api";
 import type { Route } from "../App";
-import { candidateValue, label, pct, unit } from "../lib/labels";
+import { bodyName, bodySource, candidateValue, label, pct, unit } from "../lib/labels";
 import { Button } from "./ui/Button";
 import { Icon } from "./ui/Icon";
 
@@ -55,7 +55,7 @@ export function ComparePage({ result, selected, setSelected, go }: {
     .map((id) => ranked.find((r) => r.candidate_id === id)!).filter(Boolean);
   const feats = result.ranking.features_used;
   const series: Series[] = [
-    { name: "Mars target", colour: TARGET, values: Object.fromEntries(feats.map((f) => [f, result.ranking.target_features[f] ?? null])) },
+    { name: `${bodyName(result.target.body)} target`, colour: TARGET, values: Object.fromEntries(feats.map((f) => [f, result.ranking.target_features[f] ?? null])) },
     ...chosen.map((c, i) => ({ name: `Earth #${c.rank}`, colour: SERIES[i % SERIES.length], values: Object.fromEntries(feats.map((f) => [f, candidateValue(result, c, f)])) })),
   ];
   const toggle = (id: string) => setSelected((xs) => {
@@ -67,8 +67,8 @@ export function ComparePage({ result, selected, setSelected, go }: {
     <section aria-labelledby="cmp-h">
       <div className="page-head">
         <p className="eyebrow">Comparison · metric by metric</p>
-        <h2 id="cmp-h">Mars target vs Earth candidates</h2>
-        <p className="lead">Values come straight from the analysis. Mars values are reference data from MOLA; Earth values are measured from SRTM on the same ~{chosen[0]?.analysis_spacing_m.toFixed(0) ?? "462"} m grid.</p>
+        <h2 id="cmp-h">{bodyName(result.target.body)} target vs Earth candidates</h2>
+        <p className="lead">Values come straight from the analysis. {bodyName(result.target.body)} values are reference data from {bodySource(result.target.body)}; Earth values are measured from SRTM on the same ~{chosen[0]?.analysis_spacing_m.toFixed(0) ?? "462"} m grid.</p>
       </div>
 
       <div className="card">
@@ -100,7 +100,7 @@ export function ComparePage({ result, selected, setSelected, go }: {
         <p className="eyebrow">Table</p>
         <div className="table-wrap">
           <table>
-            <caption className="sr-only">Feature values for the Mars target and the selected Earth candidates</caption>
+            <caption className="sr-only">Feature values for the target and the selected Earth candidates</caption>
             <thead><tr><th>Metric</th>{series.map((s) => <th key={s.name}>{s.name}</th>)}</tr></thead>
             <tbody>
               {feats.map((f) => (
@@ -110,7 +110,7 @@ export function ComparePage({ result, selected, setSelected, go }: {
                 </tr>
               ))}
               <tr><td>Distance to target</td><td className="num">0 (reference)</td>{chosen.map((c) => <td key={c.candidate_id} className="num">{c.distance?.toFixed(2)}</td>)}</tr>
-              <tr><td>Void-fill share</td><td className="num">unknown (MOLA)</td>{chosen.map((c) => <td key={c.candidate_id} className="num">{pct(c.fill_fraction)}</td>)}</tr>
+              <tr><td>Void-fill share</td><td className="num">unknown ({bodySource(result.target.body)})</td>{chosen.map((c) => <td key={c.candidate_id} className="num">{pct(c.fill_fraction)}</td>)}</tr>
               <tr><td>Temperature, climate, geology</td>{series.map((s) => <td key={s.name}><span className="na">not measured</span></td>)}</tr>
             </tbody>
           </table>
@@ -118,8 +118,8 @@ export function ComparePage({ result, selected, setSelected, go }: {
       </div>
 
       <div className="grid-cards">
-        <div className="card moon"><p className="eyebrow">Earth vs Moon</p><p>Unavailable — no lunar data is integrated yet.</p></div>
-        <div className="card moon"><p className="eyebrow">Moon vs Mars</p><p>Unavailable — no lunar data is integrated yet.</p></div>
+        <div className="card moon"><p className="eyebrow">Other bodies</p><p>Each analysis compares one target ({bodyName(result.target.body)}) with Earth. Run a separate analysis for the other body; distances from different analyses are not comparable (normalisation depends on the candidate pool).</p></div>
+        <div className="card moon"><p className="eyebrow">Moon vs Mars</p><p>Not offered: no direct Moon–Mars comparison is implemented.</p></div>
       </div>
     </section>
   );

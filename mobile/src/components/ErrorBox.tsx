@@ -1,7 +1,7 @@
 import type { ApiError } from "../lib/api";
 
 export function ErrorBox({ error, onRetry }: { error: ApiError; onRetry?: () => void }) {
-  const details = Array.isArray(error.details) ? (error.details as { loc?: unknown[]; msg?: string; product_id?: string }[]) : [];
+  const details = Array.isArray(error.details) ? (error.details as ({ loc?: unknown[]; msg?: string; product_id?: string } | string)[]) : [];
   return (
     <div className="banner" role="alert">
       <strong>Error:</strong> {error.message}
@@ -9,7 +9,7 @@ export function ErrorBox({ error, onRetry }: { error: ApiError; onRetry?: () => 
         <ul>
           {details.map((d, i) => (
             <li key={i}>
-              {d.msg ? `${(d.loc ?? []).slice(1).join(" → ")}: ${d.msg}` : JSON.stringify(d)}
+              {typeof d === "string" ? d : d.msg ? `${(d.loc ?? []).slice(1).join(" → ")}: ${d.msg}` : JSON.stringify(d)}
             </li>
           ))}
         </ul>

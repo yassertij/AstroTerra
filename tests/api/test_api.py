@@ -49,7 +49,8 @@ def test_read_endpoints(data_dir, tmp_path):
         h = c.get("/v1/health").json()
         assert h["status"] == "ok" and h["synthetic_data"] is True
         s = c.get("/v1/sources").json()
-        assert {x["data_set_id"] for x in s["approved"]} == {"MGS-M-MOLA-5-MEGDR-L3-V1.0", "SRTMGL1.003", "SRTMGL1N.003"}
+        assert {x["data_set_id"] for x in s["approved"]} == {
+            "MGS-M-MOLA-5-MEGDR-L3-V1.0", "LRO-L-LOLA-4-GDR-V1.0", "SRTMGL1.003", "SRTMGL1N.003"}
         assert "SLDEM2015" in s["excluded"]
         r = c.get("/v1/datasets")
         assert r.json()["earth_srtm"] == [{"tile": "N38W111", "num_file": True}]
@@ -152,7 +153,8 @@ def test_failures_are_reported_and_worker_survives(data_dir, tmp_path):
         return {"ok": True}
 
     with TestClient(create_app(settings_for(data_dir, tmp_path), runner=flaky)) as c:
-        ids = [c.post("/v1/analyses", json=TARGET).json()["id"] for _ in range(3)]
+        # distinct requests (identical active requests are deduplicated by design)
+        ids = [c.post("/v1/analyses", json={**TARGET, "stride_km": 10 + k}).json()["id"] for k in range(3)]
         a, b, ok = (wait(c, i) for i in ids)
         assert a["status"] == "failed" and a["error"]["code"] == "MetricError"
         assert b["status"] == "failed" and b["error"]["code"] == "internal_error" and "boom" not in b["error"]["message"]
