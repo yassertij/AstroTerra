@@ -202,3 +202,31 @@ describe("server failures never crash or fake success", () => {
     expect(fetchMock.mock.calls.some((c) => String(c[0]).endsWith("/result"))).toBe(false);
   });
 });
+
+describe("connection diagnostics for real phones", () => {
+  it("explains that 10.0.2.2 only works in the emulator and names the address tried", async () => {
+    setApiBase("http://10.0.2.2:8765");
+    fetchMock.mockImplementation(() => Promise.reject(new TypeError("Failed to fetch")));
+    await expect(api.job("j1")).rejects.toMatchObject({
+      code: "network_error",
+      message: expect.stringMatching(/at http:\/\/10\.0\.2\.2:8765\..*only works inside the Android emulator/),
+    });
+  });
+
+  it("Settings test connection reports success and failure without saving", async () => {
+    const { Settings } = await import("../components/Settings");
+    setApiBase("http://10.0.2.2:8765");
+    render(<Settings readable={false} setReadable={() => {}} onDeleteLocalData={() => {}} />);
+    const input = screen.getByLabelText(/Analysis server address/);
+    fireEvent.change(input, { target: { value: "http://192.168.1.105:8765" } });
+    fetchMock.mockImplementationOnce(() => Promise.reject(new TypeError("Failed to fetch")));
+    fireEvent.click(screen.getByText("Test connection"));
+    await screen.findByText(/Connection failed\./);
+    expect(screen.getByRole("alert").textContent).toMatch(/same Wi-Fi \(not mobile data\)/);
+    fetchMock.mockImplementationOnce(() => ok({ status: "ok", core_version: "0.2.0", synthetic_data: false }));
+    fireEvent.click(screen.getByText("Test connection"));
+    await screen.findByText(/Server version 0.2.0/);
+    expect(String(fetchMock.mock.calls.at(-1)![0])).toBe("http://192.168.1.105:8765/v1/health");
+    expect(localStorage.getItem("paf.apiBase")).toBe("http://10.0.2.2:8765"); // not saved by testing
+  });
+});

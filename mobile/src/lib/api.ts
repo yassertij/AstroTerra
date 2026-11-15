@@ -45,6 +45,54 @@ export function apiBaseProblem(base: string): string | null {
   return "Use https:// for a server outside your local network; plain http:// is allowed only for local or private-network addresses.";
 }
 
+/** Why an address that is syntactically valid may still be unreachable from this device. */
+export function connectionHint(base: string): string {
+  let host = "";
+  try {
+    host = new URL(base).hostname;
+  } catch {
+    return "";
+  }
+  if (host === "10.0.2.2") {
+    return "10.0.2.2 only works inside the Android emulator. On a real phone, enter your computer's Wi-Fi address " +
+      "(for example http://192.168.1.105:8765) with the phone on the same Wi-Fi, or use http://127.0.0.1:8765 over a " +
+      "USB cable after running 'adb reverse tcp:8765 tcp:8765' on the computer.";
+  }
+  if (host === "127.0.0.1" || host === "localhost" || host === "[::1]") {
+    return "127.0.0.1 means this device itself. On a phone it works only over a USB cable after " +
+      "'adb reverse tcp:8765 tcp:8765'; otherwise enter your computer's Wi-Fi address.";
+  }
+  if (PRIVATE_HOST.test(host)) {
+    return "Check that the server is running with --host 0.0.0.0, that this device is on the same Wi-Fi " +
+      "(not mobile data), and that the computer's firewall allows the port.";
+  }
+  return "Check that the server is running and reachable over HTTPS.";
+}
+
+export type ServerCheck = { ok: true; version: string; synthetic: boolean } | { ok: false; message: string };
+
+/** Probe /v1/health at an address without saving it (Settings "Test connection"). */
+export async function checkServer(base: string, timeoutMs = 8000): Promise<ServerCheck> {
+  const clean = base.trim().replace(/\/+$/, "");
+  const problem = apiBaseProblem(clean);
+  if (problem) return { ok: false, message: problem };
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${clean}/v1/health`, { signal: ctl.signal });
+    const body = (await res.json().catch(() => null)) as { status?: string; core_version?: string; synthetic_data?: boolean } | null;
+    if (!res.ok || body?.status !== "ok") {
+      return { ok: false, message: `The address answered, but not as a Planetary Analog Finder server (HTTP ${res.status}).` };
+    }
+    return { ok: true, version: body.core_version ?? "unknown", synthetic: !!body.synthetic_data };
+  } catch {
+    const lead = ctl.signal.aborted ? `No answer within ${timeoutMs / 1000} s.` : "Cannot connect.";
+    return { ok: false, message: `${lead} ${connectionHint(clean)}` };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 const TRANSIENT = new Set([502, 503, 504]);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export const RETRY = { attempts: 3, baseDelayMs: 500 };
@@ -80,7 +128,7 @@ async function request<T>(path: string, init?: RequestInit, timeoutMs = 15000): 
   } catch {
     throw new ApiError(0, "network_error", ctl.signal.aborted
       ? `The analysis server did not answer within ${timeoutMs / 1000} s. Check the connection and the server address in Settings.`
-      : "Cannot reach the analysis server. Check the connection and the server address in Settings.");
+      : `Cannot reach the analysis server at ${getApiBase()}. ${connectionHint(getApiBase())} You can change the address in Settings.`);
   } finally {
     clearTimeout(timer);
   }

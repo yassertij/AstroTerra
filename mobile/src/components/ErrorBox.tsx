@@ -15,6 +15,7 @@ export function ErrorBox({ error, onRetry }: { error: ApiError; onRetry?: () => 
         </ul>
       )}
       {onRetry && <button onClick={onRetry}>Try again</button>}
+      {(error.code === "network_error" || error.code === "config_error") && <a className="button" href="#/settings">Open Settings</a>}
     </div>
   );
 }
