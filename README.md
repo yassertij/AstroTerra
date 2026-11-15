@@ -1,4 +1,6 @@
-# Planetary Analog Finder
+# AstroTerra
+
+*Formerly "Planetary Analog Finder".*
 
 Compares the **topography** of a Mars or Moon region with candidate regions on Earth, using
 only NASA-archived elevation data, and ranks the Earth candidates by how similar their

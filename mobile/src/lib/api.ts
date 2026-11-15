@@ -1,4 +1,4 @@
-// Thin client for the Planetary Analog Finder API. No scientific logic lives here.
+// Thin client for the AstroTerra API. No scientific logic lives here.
 
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string, public details?: unknown) {
@@ -82,7 +82,7 @@ export async function checkServer(base: string, timeoutMs = 8000): Promise<Serve
     const res = await fetch(`${clean}/v1/health`, { signal: ctl.signal });
     const body = (await res.json().catch(() => null)) as { status?: string; core_version?: string; synthetic_data?: boolean } | null;
     if (!res.ok || body?.status !== "ok") {
-      return { ok: false, message: `The address answered, but not as a Planetary Analog Finder server (HTTP ${res.status}).` };
+      return { ok: false, message: `The address answered, but not as an AstroTerra server (HTTP ${res.status}).` };
     }
     return { ok: true, version: body.core_version ?? "unknown", synthetic: !!body.synthetic_data };
   } catch {

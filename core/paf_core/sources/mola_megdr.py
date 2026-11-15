@@ -203,7 +203,7 @@ def open_megdr(label_path: str | Path) -> MegdrProduct:
         file_format=f"PDS3 detached label + raw {stype} {bits}-bit image",
         body=source.body,
         horizontal_reference=f"{csys} {lbl.find('COORDINATE_SYSTEM_TYPE') or ''}, sphere radius {radius:.1f} m (label A/B/C_AXIS_RADIUS)".strip(),
-        projection=f"SIMPLE CYLINDRICAL, {res} pixel/degree, edge-registered, centre lon {lbl.find('CENTER_LONGITUDE')}",
+        projection=f"SIMPLE CYLINDRICAL, {res:g} pixel/degree, edge-registered, centre lon {_deg(lbl.find('CENTER_LONGITUDE')):g}° E",
         latitude_type="planetocentric",
         longitude_convention=f"0-360, positive {londir}",
         vertical_reference=source.vertical_reference,

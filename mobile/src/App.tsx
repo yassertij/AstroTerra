@@ -74,7 +74,7 @@ export default function App() {
       <div className="app-shell">
         <a href="#main" className="sr-only">Skip to content</a>
         <nav className="topnav" aria-label="Main">
-          <a className="brand" href="#/overview"><span className="brand-mark" aria-hidden="true" />Planetary Analog Finder</a>
+          <a className="brand" href="#/overview"><span className="brand-mark" aria-hidden="true" />AstroTerra</a>
           <div className="navlist">
             {ROUTES.map((r) => (
               <a key={r.id} className="navlink" href={`#/${r.id}`} aria-current={route === r.id ? "page" : undefined}>

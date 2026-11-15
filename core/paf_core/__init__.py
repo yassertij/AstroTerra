@@ -1,4 +1,4 @@
-"""Planetary Analog Finder scientific core.
+"""AstroTerra (Planetary Analog Finder) scientific core.
 
 Produces *topographic analog assessments* only. Results are not proof of geological,
 chemical, biological, or environmental equivalence.

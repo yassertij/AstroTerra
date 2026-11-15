@@ -1,7 +1,7 @@
 [project]
 name = "paf-core"
 version = "0.2.0"
-description = "Planetary Analog Finder - scientific core (topographic analog assessment, not proof of geological equivalence)"
+description = "AstroTerra - scientific core (topographic analog assessment, not proof of geological equivalence)"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "numpy>=1.26",

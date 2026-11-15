@@ -13,7 +13,7 @@ const release = process.env.PAF_RELEASE === "1";
 
 const config: CapacitorConfig = {
   appId: "dev.paf.planetaryanalog",
-  appName: "Planetary Analog Finder",
+  appName: "AstroTerra",
   webDir: "dist",
   backgroundColor: "#040607",
   server: release
