@@ -81,7 +81,8 @@ installed over USB (`adb install -r`), API reached through `adb reverse tcp:8765
 |---|---|
 | Install and cold launch | OK, 514 ms, no crash in logcat |
 | App reaches the server | `GET /v1/health` and `/v1/datasets` 200 from the phone; Overview shows the real tile count |
-| Analysis on the phone (Mars, Gale 5.4° S 137.8° E, 40 km, N38W111) | queued → running ("Tile 1/1") → succeeded in 63 s |
+| Analysis on the phone (Mars, Gale 5.4° S 137.8° E, 40 km, N38W111) | queued → running ("Tile 1/1") → succeeded. The server's job record shows 1.9 s of computation; the 63 s seen on the phone were mostly the app in the background (Android slows background timers), not computation |
+| Recorded demo video (same phone) | 8 scenes captured with `adb screenrecord`: Overview, Mars setup + run, Mars results, Earth map, Compare, Moon run, Moon results, Method/Settings. Mars and Moon jobs each took 1.1 s on the server; Moon best distance 8.75 (same as the PC run) |
 | Results on screen | 40 ranked rows identical to the API result (rank, id, distance); warnings, explanation and provenance shown; no synthetic banner |
 | Reproducibility | identical to the recorded reference run (same ids and ranks, max distance difference 0.0) |
 | CSV export | exported from the app on the phone (`planetary-analog-51a809d8.csv`) and shared to another app |

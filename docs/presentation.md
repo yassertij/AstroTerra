@@ -55,7 +55,8 @@ Laptop-only alternative: start the API and web app; open `http://127.0.0.1:5173`
 
 1. **Overview** — counts of real data on the server (1 Mars tile, 1 Moon product, 1 Earth tile).
 2. **Analysis** → Mars, Gale crater (5.4° S, 137.8° E), 40 km, tick N38W111 → Run.
-   Show the progress card (takes about 20–40 s).
+   The server finishes in about 1–2 s once the SRTM tile has been extracted (job records,
+   2026-11-15); the progress card jumps to 100 % almost at once.
 3. **Mars** → ranking table → *Explain* the top candidate: which features drive the
    distance, the sensitivity range, void-fill share.
 4. **Earth** → map: the candidate patches on the real tile footprint; note the basemap is
