@@ -209,7 +209,7 @@ def create_app(settings: Settings | None = None, start_worker: bool = True, runn
             worker.stop()
         store.close()
 
-    app = FastAPI(title="Planetary Analog Finder API", version=core_version, lifespan=lifespan,
+    app = FastAPI(title="AstroTerra API", version=core_version, lifespan=lifespan,
                   description=DISCLAIMER)
     app.state.settings, app.state.store, app.state.worker = settings, store, worker
     app.add_middleware(CORSMiddleware, allow_origins=list(settings.cors_origins),
@@ -357,7 +357,7 @@ def create_app(settings: Settings | None = None, start_worker: bool = True, runn
                       include_coordinates: bool = False):
         res = result(jid)  # raises 404 / 409 as appropriate
         data = json.loads(res.body)
-        stem = f"planetary-analog-{jid[:8]}"
+        stem = f"astroterra-{jid[:8]}"
         if format == "csv":
             body, media = export.to_csv(data, include_coordinates), "text/csv; charset=utf-8"
         else:

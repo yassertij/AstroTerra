@@ -17,7 +17,7 @@ Legend: ✅ verified here (test or recorded run) · ⚠️ implemented, not veri
 | ✅ App shows only validated results; bounded retries; polling stops on stall | `resilience.test.tsx` |
 | ✅ Moon offered only when a validated LOLA product exists | `resilience.test.tsx`, live run |
 | ✅ Release Android manifest: cleartext disabled; app origin https | merged manifest, synced `capacitor.config.json` |
-| ✅ Debug APK builds; contains the exact web build | `dist/PlanetaryAnalogFinder-0.2.1-debug-usb.apk` |
+| ✅ Debug APK builds; contains the exact web build | `dist/AstroTerra-0.2.2-debug-usb.apk` |
 | ✅ Runs on a real phone: install, launch, server connection, Mars analysis, results identical to API, CSV export | Galaxy S24 Ultra, Android 16 ([validation.md](validation.md#device-run-2026-11-15-samsung-galaxy-s24-ultra-sm-s928b-android-16)) |
 
 ## Not verified

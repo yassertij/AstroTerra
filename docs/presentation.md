@@ -47,7 +47,7 @@ Full evidence: [validation.md](validation.md) · [release-checklist.md](release-
 Before (phone over USB, tested):
 1. Phone: Developer options → USB debugging on; Samsung **Auto Blocker off**; plug in, tap Allow.
 2. PC: start the API (README "Running"), then
-   `adb install -r dist/PlanetaryAnalogFinder-0.2.1-debug-usb.apk` and
+   `adb install -r dist/AstroTerra-0.2.2-debug-usb.apk` and
    `adb reverse tcp:8765 tcp:8765` (repeat `adb reverse` after re-plugging the cable).
 3. App → Settings → address `http://127.0.0.1:8765` → **Test connection** → "Connected".
 
