@@ -26,3 +26,18 @@ def test_md5_roundtrip(tmp_path):
 def test_md5_manifest_windows_paths():
     text = "1F2C70C407976DD22E79DFBB3469EBF1  mgsl_300x\\meg128\\megt00n090hb.img\n"
     assert parse_md5_manifest(text) == {"megt00n090hb.img": "1F2C70C407976DD22E79DFBB3469EBF1"}
+
+
+def test_provenance_text_has_no_raw_label_objects(tmp_path):
+    """Regression: the MEGDR projection text once showed "Quantity(value=180.0, unit='DEGREE')"."""
+    from paf_core.sources import lola_gdr, mola_megdr
+
+    from .lola_fixture import write_lola
+    from .megdr_fixture import write_megdr
+
+    (tmp_path / "m").mkdir()
+    recs = [mola_megdr.open_megdr(write_megdr(tmp_path / "m")).record, lola_gdr.open_lola(write_lola(tmp_path / "l")).record]
+    for rec in recs:
+        text = rec.model_dump_json()
+        assert "Quantity(" not in text, text
+        assert "centre lon 180° E" in rec.projection

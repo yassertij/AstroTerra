@@ -169,7 +169,7 @@ def open_lola(label_path: str | Path) -> LolaProduct:
         file_format=f"PDS3 detached label + raw {stype} {bits}-bit image",
         body=source.body,
         horizontal_reference=f"{csys}, planetocentric latitude, sphere radius {radius:.1f} m (label A/B/C_AXIS_RADIUS)",
-        projection=f"SIMPLE CYLINDRICAL, {res:g} pixel/degree, pixel (edge) registered, centre lon {clon}",
+        projection=f"SIMPLE CYLINDRICAL, {res:g} pixel/degree, pixel (edge) registered, centre lon {clon:g}° E",
         latitude_type="planetocentric (Mean Earth/Polar Axis frame)",
         longitude_convention=f"0-360, positive {londir}",
         vertical_reference=source.vertical_reference,
