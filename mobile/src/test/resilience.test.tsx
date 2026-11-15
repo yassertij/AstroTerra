@@ -162,3 +162,43 @@ describe("Moon", () => {
     expect((screen.getByRole("button", { name: /Run analysis/ }) as HTMLButtonElement).disabled).toBe(true);
   });
 });
+
+describe("server failures never crash or fake success", () => {
+  it("times out a request that never answers, with a clear message", async () => {
+    vi.useFakeTimers();
+    try {
+      fetchMock.mockImplementation((_u: string, init: RequestInit) => new Promise((_res, rej) => {
+        init.signal?.addEventListener("abort", () => rej(new DOMException("aborted", "AbortError")));
+      }));
+      const p = api.job("j1");
+      const assertion = expect(p).rejects.toMatchObject({ code: "network_error", message: expect.stringMatching(/did not answer within 15 s/) });
+      await vi.advanceTimersByTimeAsync(15_001);
+      await assertion;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("turns an HTML 500 page into a structured error", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(new Response("<html>Internal Server Error</html>", { status: 500 })));
+    await expect(api.job("j1")).rejects.toMatchObject({ status: 500, code: "http_error", message: "Server returned 500" });
+  });
+
+  it("rejects a non-JSON 200 result instead of showing it", () => {
+    const v = validateResult("<html>proxy login page</html>");
+    expect(v.ok).toBe(false);
+  });
+
+  it("shows the failure, not results, when the job failed on the server", async () => {
+    localStorage.setItem("paf.currentJob", "jobF");
+    fetchMock.mockImplementation(() => ok({ id: "jobF", status: "failed", progress: 0.4, message: "",
+      error: { code: "MetricError", message: "Only 2 eligible candidates (minimum 3)" }, created: "", updated: "" }));
+    let seen: ReturnType<typeof useJob> | null = null;
+    function H() { const jobs = useJob(5); seen = jobs; return <JobStatus jobs={jobs} />; }
+    render(<H />);
+    await screen.findByText(/Only 2 eligible candidates/);
+    expect(seen!.result).toBeNull();
+    expect(screen.queryByText("Show results")).toBeNull();
+    expect(fetchMock.mock.calls.some((c) => String(c[0]).endsWith("/result"))).toBe(false);
+  });
+});

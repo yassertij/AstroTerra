@@ -43,10 +43,15 @@ method is scientifically right.
 
 | Suite | Count | Notes |
 |---|---|---|
-| Python (`tests/`) | 154 passed, 0 skipped with all data present | includes 11 real-data tests (MOLA + SRTM 5, LOLA 6); they skip themselves when the files are absent. Was 112 before this repair |
-| Mobile (`mobile/src/test`) | 50 passed | adds API-address rule, bounded retries, idempotency key reuse, result validation (7 corruption cases), stall stop/resume, Moon page and form |
+| Python (`tests/`) | 167 passed, 0 skipped with all data present | includes 11 real-data tests (MOLA + SRTM 5, LOLA 6); they skip themselves when the files are absent. Was 112 before this repair |
+| Mobile (`mobile/src/test`) | 54 passed | adds API-address rule, bounded retries, idempotency key reuse, result validation (7 corruption cases), stall stop/resume, Moon page and form |
 | Typecheck / web build | clean | `tsc --noEmit`, `vite build` |
-| Android | builds only | `assembleDebug`, `assembleRelease` (unsigned) |
+| Android | builds; APK content verified | `assembleDebug`, `assembleRelease` (unsigned). All 60 files of `mobile/dist` are inside the debug APK with identical SHA-256 (plus Capacitor's `cordova.js`, `cordova_plugins.js`); default API address `http://10.0.2.2:8765`; rebuild is byte-identical (APK SHA-256 `23dd4059…ea55ff`) |
+
+Added 2026-11-15 (second pass): unsupported body (`VENUS`), zero/negative patch, latitude
+out of range, west-negative longitude, unknown `crs` field, reversed and empty windows (MOLA
+and LOLA), end-to-end determinism of two identical analyses, request timeout, HTML 500 page,
+non-JSON result, and a failed job that must never show results.
 
 ## Recorded real-data runs
 

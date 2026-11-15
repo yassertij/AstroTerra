@@ -103,3 +103,11 @@ def test_radius_product_rejected_as_elevation(tmp_path):
 def test_unapproved_dataset_rejected(tmp_path):
     with pytest.raises(UnapprovedSourceError):
         open_megdr(write_megdr(tmp_path, overrides={"DATA_SET_ID": '"SLDEM2015"'}))
+
+
+@pytest.mark.parametrize("bounds", [(-0.2, -0.8, 90.2, 90.8), (-0.8, -0.2, 90.8, 90.2), (-0.5, -0.5, 90.2, 90.8)])
+def test_reversed_or_empty_window_rejected(tmp_path, bounds):
+    from paf_core.sources import mola_megdr
+    p = mola_megdr.open_megdr(write_megdr(tmp_path))
+    with pytest.raises(RasterValidationError, match="min < max"):
+        mola_megdr.read_window(p, *bounds)
